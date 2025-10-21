@@ -14,7 +14,6 @@
       position: relative;
       min-height: 100vh;
     }
-    /* Capa difuminada encima del fondo */
     #bg-overlay {
       position: fixed;
       inset: 0;
@@ -28,7 +27,6 @@
 </head>
 <body class="text-slate-800">
   <div id="bg-overlay"></div>
-
   <div class="max-w-7xl mx-auto p-6">
     <header class="mb-6 text-white drop-shadow-md">
       <h1 class="text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
@@ -36,7 +34,6 @@
     </header>
 
     <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Formulario -->
       <div class="md:col-span-1 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
         <h2 class="font-semibold mb-2">Agregar / editar alumno</h2>
         <form id="studentForm" class="space-y-3">
@@ -90,7 +87,6 @@
         </form>
       </div>
 
-      <!-- Lista de alumnos -->
       <div class="md:col-span-2 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
         <div class="flex justify-between items-center mb-4">
           <h2 class="font-semibold">Alumnos registrados</h2>
@@ -123,7 +119,6 @@
     <footer class="mt-6 text-xs text-slate-100 drop-shadow">Ahora conectado a Firebase Firestore.</footer>
   </div>
 
-<!-- Script principal -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
   import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
@@ -143,17 +138,19 @@
   const db = getFirestore(app);
   const studentsCol = collection(db, "students");
 
+  const allStudents = [];
+
   async function saveStudent(student) {
     if (student.id) await updateDoc(doc(db, "students", student.id), student);
     else await addDoc(studentsCol, student);
   }
 
   async function deleteStudentFirebase(id) {
+    if (!confirm("¿Seguro quieres eliminar este alumno?")) return;
     await deleteDoc(doc(db, "students", id));
   }
   window.deleteStudentFirebase = deleteStudentFirebase;
 
-  // Editar alumno y hacer scroll al formulario
   window.editStudent = function (s) {
     document.getElementById("studentId").value = s.id;
     document.getElementById("name").value = s.name || "";
@@ -165,35 +162,21 @@
     document.querySelectorAll(".dayCheckbox").forEach(cb => {
       cb.checked = (s.days || []).includes(cb.value);
     });
-
-    // Scroll hacia el formulario
     document.getElementById('studentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Renovar fecha manteniendo día y año, solo cambia el mes
   window.renewStudent = async function (id, currentDate) {
     if (!currentDate) return;
     const fecha = new Date(currentDate);
     const diaOriginal = fecha.getDate();
     fecha.setMonth(fecha.getMonth() + 1);
-
-    // Ajuste de días para meses cortos
     if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
-
     const nuevaStr = fecha.toISOString().split("T")[0];
     await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
   };
 
-  const allStudents = [];
-  onSnapshot(studentsCol, snapshot => {
-    allStudents.length = 0;
-    snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
-    render(allStudents);
-    renderScheduleGrid(allStudents);
-  });
-
   function render(students) {
-    const tbody = document.getElementById('studentsTbody'); 
+    const tbody = document.getElementById('studentsTbody');
     tbody.innerHTML = '';
     const search = document.getElementById('search').value.toLowerCase();
 
@@ -208,16 +191,8 @@
       let estado = '-';
       const hoy = new Date().toISOString().split("T")[0];
       let extraBtns = "";
-
       if (s.dueDate) {
-        if (s.dueDate < hoy) {
-          estado = `<span class="text-red-600 font-semibold">Vencido</span>`;
-          extraBtns += `<button onclick="renewStudent('${s.id}','${s.dueDate}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1">Renovar</button>`;
-        } else if (s.dueDate === hoy) {
-          estado = `<span class="text-orange-500 font-semibold">Vence hoy</span>`;
-        } else {
-          estado = `<span class="text-green-600 font-semibold">Al día</span>`;
-        }
+        if (s.dueDate < hoy) extraBtns += `<button onclick="renewStudent('${s.id}','${s.dueDate}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1">Renovar</button>`;
       }
 
       const tr = document.createElement('tr');
@@ -225,7 +200,12 @@
         <td class="p-2 align-top">${s.name}</td>
         <td class="p-2 align-top">${classStr}</td>
         <td class="p-2 align-top">${s.dueDate || '-'}</td>
-        <td class="p-2 align-top">${estado}</td>
+        <td class="p-2 align-top">
+          ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
+            s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
+            '<span class="text-green-600 font-semibold">Al día</span>'
+          }
+        </td>
         <td class="p-2 align-top text-center">
           <a href="${waLink}" target="_blank" class="bg-green-500 text-white px-2 py-1 rounded text-xs">Notificar</a>
         </td>
@@ -238,8 +218,6 @@
       tbody.appendChild(tr);
     });
   }
-
-  document.getElementById('search').addEventListener('input', () => render(allStudents));
 
   function renderScheduleGrid(students) {
     const days = ['Lun','Mar','Mié','Jue','Vie'];
@@ -255,44 +233,49 @@
     Object.keys(gridMap).forEach(key => {
       const [prof, timeBase] = key.split("||");
       let profStudents = gridMap[key];
-      profStudents.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+      profStudents.sort((a,b)=>a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
       const table = document.createElement('table');
       table.className = 'w-full border table-auto text-sm mb-6';
       const dayCounts = {};
-      days.forEach(d => { dayCounts[d] = profStudents.filter(s => (s.days || []).includes(d)).length; });
+      days.forEach(d=>{dayCounts[d]=profStudents.filter(s=>(s.days||[]).includes(d)).length;});
       table.innerHTML = `
         <thead class="bg-gray-200">
           <tr>
             <th class="border p-1">Alumno</th>
-            ${days.map(d => `<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/9)</span></th>`).join('')}
+            ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/9)</span></th>`).join('')}
           </tr>
         </thead>`;
-      const tbody = document.createElement('tbody');
-      profStudents.forEach(s => {
+      const tbodyEl = document.createElement('tbody');
+      profStudents.forEach(s=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="border p-1 font-semibold">${s.name}</td>
-          ${days.map(d => {
-            const hasClass = (s.days || []).includes(d);
+          ${days.map(d=>{
+            const hasClass = (s.days||[]).includes(d);
             let bgColor = hasClass ? 'bg-green-200' : '';
-            if (dayCounts[d] >= 9) bgColor = 'bg-red-400 text-white';
-            return `<td class="border p-1 text-xs ${bgColor}">
-              ${hasClass ? s.name : ''}
-            </td>`;
+            if(dayCounts[d]>=9) bgColor='bg-red-400 text-white';
+            return `<td class="border p-1 text-xs ${bgColor}">${hasClass?s.name:''}</td>`;
           }).join('')}
         `;
-        tbody.appendChild(tr);
+        tbodyEl.appendChild(tr);
       });
-      table.appendChild(tbody);
+      table.appendChild(tbodyEl);
       const profTitle = document.createElement('h4');
-      profTitle.className = 'font-semibold mt-4 mb-2';
-      profTitle.textContent = `Profesor: ${prof} — Horario: ${timeBase}`;
+      profTitle.className='font-semibold mt-4 mb-2';
+      profTitle.textContent=`Profesor: ${prof} — Horario: ${timeBase}`;
       container.appendChild(profTitle);
       container.appendChild(table);
     });
   }
 
-  document.getElementById("studentForm").addEventListener("submit", async ev => {
+  onSnapshot(studentsCol, snapshot=>{
+    allStudents.length=0;
+    snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
+    render(allStudents);
+    renderScheduleGrid(allStudents);
+  });
+
+  document.getElementById("studentForm").addEventListener("submit", async ev=>{
     ev.preventDefault();
     const student = {
       id: document.getElementById('studentId').value,
@@ -300,19 +283,22 @@
       studentPhone: document.getElementById('studentPhone').value.trim(),
       startDate: document.getElementById('startDate').value,
       dueDate: document.getElementById('dueDate').value,
-      days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c => c.value),
+      days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c=>c.value),
       time: document.getElementById('fixedTime').value,
       prof: document.getElementById('fixedProf').value.trim()
     };
     await saveStudent(student);
     ev.target.reset();
-    document.getElementById('studentId').value = '';
+    document.getElementById('studentId').value='';
   });
 
-  document.getElementById('clearBtn').addEventListener('click', ()=> {
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
     document.getElementById('studentForm').reset();
-    document.getElementById('studentId').value = '';
+    document.getElementById('studentId').value='';
   });
+
+  document.getElementById('search').addEventListener('input', ()=>render(allStudents));
+
 </script>
 </body>
 </html>
