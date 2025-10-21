@@ -120,185 +120,207 @@
   </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
-    from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
+  from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDfPoyEFqZzvhmGLTKLLOZ9R2xr6n14_08",
-    authDomain: "proyectoflexbody.firebaseapp.com",
-    projectId: "proyectoflexbody",
-    storageBucket: "proyectoflexbody.firebasestorage.app",
-    messagingSenderId: "794622847955",
-    appId: "1:794622847955:web:b0b8e1ebb22ede0c8b5d26",
-    measurementId: "G-5J3SWHST35"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDfPoyEFqZzvhmGLTKLLOZ9R2xr6n14_08",
+  authDomain: "proyectoflexbody.firebaseapp.com",
+  projectId: "proyectoflexbody",
+  storageBucket: "proyectoflexbody.firebasestorage.app",
+  messagingSenderId: "794622847955",
+  appId: "1:794622847955:web:b0b8e1ebb22ede0c8b5d26",
+  measurementId: "G-5J3SWHST35"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const studentsCol = collection(db, "students");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const studentsCol = collection(db, "students");
+const allStudents = [];
 
-  const allStudents = [];
+// Guardar alumno
+async function saveStudent(student) {
+  const data = { ...student };
+  delete data.id;
+  if (student.id) await updateDoc(doc(db, "students", student.id), data);
+  else await addDoc(studentsCol, data);
+}
 
-  async function saveStudent(student) {
-    if (student.id) await updateDoc(doc(db, "students", student.id), student);
-    else await addDoc(studentsCol, student);
-  }
+// Eliminar alumno
+async function deleteStudentFirebase(id) {
+  if (!id) return;
+  if (!confirm("¿Seguro quieres eliminar este alumno?")) return;
+  await deleteDoc(doc(db, "students", id));
+}
+window.deleteStudentFirebase = deleteStudentFirebase;
 
-  async function deleteStudentFirebase(id) {
-    if (!confirm("¿Seguro quieres eliminar este alumno?")) return;
-    await deleteDoc(doc(db, "students", id));
-  }
-  window.deleteStudentFirebase = deleteStudentFirebase;
+// Editar alumno
+window.editStudent = function (s) {
+  document.getElementById("studentId").value = s.id;
+  document.getElementById("name").value = s.name || "";
+  document.getElementById("studentPhone").value = s.studentPhone || "";
+  document.getElementById("startDate").value = s.startDate || "";
+  document.getElementById("dueDate").value = s.dueDate || "";
+  document.getElementById("fixedTime").value = s.time || "";
+  document.getElementById("fixedProf").value = s.prof || "";
+  document.querySelectorAll(".dayCheckbox").forEach(cb => {
+    cb.checked = (s.days || []).includes(cb.value);
+  });
+  document.getElementById('studentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 
-  window.editStudent = function (s) {
-    document.getElementById("studentId").value = s.id;
-    document.getElementById("name").value = s.name || "";
-    document.getElementById("studentPhone").value = s.studentPhone || "";
-    document.getElementById("startDate").value = s.startDate || "";
-    document.getElementById("dueDate").value = s.dueDate || "";
-    document.getElementById("fixedTime").value = s.time || "";
-    document.getElementById("fixedProf").value = s.prof || "";
-    document.querySelectorAll(".dayCheckbox").forEach(cb => {
-      cb.checked = (s.days || []).includes(cb.value);
+// Renovar fecha de pago
+window.renewStudent = async function(id, currentDate) {
+  if (!id || !currentDate) return;
+  const fecha = new Date(currentDate);
+  const diaOriginal = fecha.getDate();
+  fecha.setMonth(fecha.getMonth() + 1);
+  if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
+  const nuevaStr = fecha.toISOString().split("T")[0];
+  await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
+  alert(`Fecha de próximo pago renovada: ${nuevaStr}`);
+};
+
+// Render tabla
+function render(students) {
+  const tbody = document.getElementById('studentsTbody');
+  tbody.innerHTML = '';
+  const search = document.getElementById('search').value.toLowerCase();
+
+  students.filter(s => !search || s.name.toLowerCase().includes(search))
+  .forEach(s => {
+    const classStr = (s.days || []).map(d => `${d} ${s.time} (${s.prof})`).join('<br/>');
+    const waLink = s.studentPhone ? 
+      `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
+        'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + (s.dueDate || '')
+      )}` : '#';
+
+    const hoy = new Date().toISOString().split("T")[0];
+    const extraBtns = s.dueDate && s.dueDate < hoy ? 
+      `<button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1 renew-btn" data-id="${s.id}" data-date="${s.dueDate}">Renovar</button>` : "";
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="p-2 align-top">${s.name}</td>
+      <td class="p-2 align-top">${classStr}</td>
+      <td class="p-2 align-top">${s.dueDate || '-'}</td>
+      <td class="p-2 align-top">
+        ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
+          s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
+          '<span class="text-green-600 font-semibold">Al día</span>'
+        }
+      </td>
+      <td class="p-2 align-top text-center">
+        <a href="${waLink}" target="_blank" class="bg-green-500 text-white px-2 py-1 rounded text-xs">Notificar</a>
+      </td>
+      <td class="p-2 align-top text-center">
+        <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs" onclick='editStudent(${JSON.stringify(s)})'>Editar</button>
+        ${extraBtns}
+        <button class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1 delete-btn" data-id="${s.id}">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Delegar eventos
+  tbody.querySelectorAll('.renew-btn').forEach(btn => {
+    btn.addEventListener('click', ev => {
+      const id = ev.currentTarget.dataset.id;
+      const date = ev.currentTarget.dataset.date;
+      renewStudent(id, date);
     });
-    document.getElementById('studentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  });
+  tbody.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', ev => {
+      const id = ev.currentTarget.dataset.id;
+      deleteStudentFirebase(id);
+    });
+  });
+}
 
-  window.renewStudent = async function (id, currentDate) {
-    if (!currentDate) return;
-    const fecha = new Date(currentDate);
-    const diaOriginal = fecha.getDate();
-    fecha.setMonth(fecha.getMonth() + 1);
-    if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
-    const nuevaStr = fecha.toISOString().split("T")[0];
-    await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
-  };
-
-  function render(students) {
-    const tbody = document.getElementById('studentsTbody');
-    tbody.innerHTML = '';
-    const search = document.getElementById('search').value.toLowerCase();
-
-    students.filter(s => !search || s.name.toLowerCase().includes(search))
-    .forEach(s => {
-      const classStr = (s.days || []).map(d => `${d} ${s.time} (${s.prof})`).join('<br/>');
-      const waLink = s.studentPhone ? 
-        `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
-          'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + (s.dueDate || '')
-        )}` : '#';
-
-      let estado = '-';
-      const hoy = new Date().toISOString().split("T")[0];
-      let extraBtns = "";
-      if (s.dueDate) {
-        if (s.dueDate < hoy) extraBtns += `<button onclick="renewStudent('${s.id}','${s.dueDate}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1">Renovar</button>`;
-      }
-
+// Render cuadrícula
+function renderScheduleGrid(students) {
+  const days = ['Lun','Mar','Mié','Jue','Vie'];
+  const container = document.getElementById('scheduleContainer');
+  container.innerHTML = '';
+  const gridMap = {};
+  students.forEach(s => {
+    if (!s.prof || !s.time) return;
+    const key = `${s.prof}||${s.time}`;
+    if (!gridMap[key]) gridMap[key] = [];
+    gridMap[key].push(s);
+  });
+  Object.keys(gridMap).forEach(key => {
+    const [prof, timeBase] = key.split("||");
+    let profStudents = gridMap[key];
+    profStudents.sort((a,b)=>a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
+    const table = document.createElement('table');
+    table.className = 'w-full border table-auto text-sm mb-6';
+    const dayCounts = {};
+    days.forEach(d=>{dayCounts[d]=profStudents.filter(s=>(s.days||[]).includes(d)).length;});
+    table.innerHTML = `
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border p-1">Alumno</th>
+          ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/9)</span></th>`).join('')}
+        </tr>
+      </thead>`;
+    const tbodyEl = document.createElement('tbody');
+    profStudents.forEach(s=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="p-2 align-top">${s.name}</td>
-        <td class="p-2 align-top">${classStr}</td>
-        <td class="p-2 align-top">${s.dueDate || '-'}</td>
-        <td class="p-2 align-top">
-          ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
-            s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
-            '<span class="text-green-600 font-semibold">Al día</span>'
-          }
-        </td>
-        <td class="p-2 align-top text-center">
-          <a href="${waLink}" target="_blank" class="bg-green-500 text-white px-2 py-1 rounded text-xs">Notificar</a>
-        </td>
-        <td class="p-2 align-top text-center">
-          <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs" onclick='editStudent(${JSON.stringify(s)})'>Editar</button>
-          ${extraBtns}
-          <button class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1" onclick="deleteStudentFirebase('${s.id}')">Eliminar</button>
-        </td>
+        <td class="border p-1 font-semibold">${s.name}</td>
+        ${days.map(d=>{
+          const hasClass = (s.days||[]).includes(d);
+          let bgColor = hasClass ? 'bg-green-200' : '';
+          if(dayCounts[d]>=9) bgColor='bg-red-400 text-white';
+          return `<td class="border p-1 text-xs ${bgColor}">${hasClass?s.name:''}</td>`;
+        }).join('')}
       `;
-      tbody.appendChild(tr);
+      tbodyEl.appendChild(tr);
     });
-  }
-
-  function renderScheduleGrid(students) {
-    const days = ['Lun','Mar','Mié','Jue','Vie'];
-    const container = document.getElementById('scheduleContainer');
-    container.innerHTML = '';
-    const gridMap = {};
-    students.forEach(s => {
-      if (!s.prof || !s.time) return;
-      const key = `${s.prof}||${s.time}`;
-      if (!gridMap[key]) gridMap[key] = [];
-      gridMap[key].push(s);
-    });
-    Object.keys(gridMap).forEach(key => {
-      const [prof, timeBase] = key.split("||");
-      let profStudents = gridMap[key];
-      profStudents.sort((a,b)=>a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
-      const table = document.createElement('table');
-      table.className = 'w-full border table-auto text-sm mb-6';
-      const dayCounts = {};
-      days.forEach(d=>{dayCounts[d]=profStudents.filter(s=>(s.days||[]).includes(d)).length;});
-      table.innerHTML = `
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="border p-1">Alumno</th>
-            ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/9)</span></th>`).join('')}
-          </tr>
-        </thead>`;
-      const tbodyEl = document.createElement('tbody');
-      profStudents.forEach(s=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="border p-1 font-semibold">${s.name}</td>
-          ${days.map(d=>{
-            const hasClass = (s.days||[]).includes(d);
-            let bgColor = hasClass ? 'bg-green-200' : '';
-            if(dayCounts[d]>=9) bgColor='bg-red-400 text-white';
-            return `<td class="border p-1 text-xs ${bgColor}">${hasClass?s.name:''}</td>`;
-          }).join('')}
-        `;
-        tbodyEl.appendChild(tr);
-      });
-      table.appendChild(tbodyEl);
-      const profTitle = document.createElement('h4');
-      profTitle.className='font-semibold mt-4 mb-2';
-      profTitle.textContent=`Profesor: ${prof} — Horario: ${timeBase}`;
-      container.appendChild(profTitle);
-      container.appendChild(table);
-    });
-  }
-
-  onSnapshot(studentsCol, snapshot=>{
-    allStudents.length=0;
-    snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
-    render(allStudents);
-    renderScheduleGrid(allStudents);
+    table.appendChild(tbodyEl);
+    const profTitle = document.createElement('h4');
+    profTitle.className='font-semibold mt-4 mb-2';
+    profTitle.textContent=`Profesor: ${prof} — Horario: ${timeBase}`;
+    container.appendChild(profTitle);
+    container.appendChild(table);
   });
+}
 
-  document.getElementById("studentForm").addEventListener("submit", async ev=>{
-    ev.preventDefault();
-    const student = {
-      id: document.getElementById('studentId').value,
-      name: document.getElementById('name').value.trim(),
-      studentPhone: document.getElementById('studentPhone').value.trim(),
-      startDate: document.getElementById('startDate').value,
-      dueDate: document.getElementById('dueDate').value,
-      days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c=>c.value),
-      time: document.getElementById('fixedTime').value,
-      prof: document.getElementById('fixedProf').value.trim()
-    };
-    await saveStudent(student);
-    ev.target.reset();
-    document.getElementById('studentId').value='';
-  });
+// Firestore snapshot
+onSnapshot(studentsCol, snapshot=>{
+  allStudents.length=0;
+  snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
+  render(allStudents);
+  renderScheduleGrid(allStudents);
+});
 
-  document.getElementById('clearBtn').addEventListener('click', ()=>{
-    document.getElementById('studentForm').reset();
-    document.getElementById('studentId').value='';
-  });
+// Formulario
+document.getElementById("studentForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const student = {
+    id: document.getElementById('studentId').value,
+    name: document.getElementById('name').value.trim(),
+    studentPhone: document.getElementById('studentPhone').value.trim(),
+    startDate: document.getElementById('startDate').value,
+    dueDate: document.getElementById('dueDate').value,
+    days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c=>c.value),
+    time: document.getElementById('fixedTime').value,
+    prof: document.getElementById('fixedProf').value.trim()
+  };
+  await saveStudent(student);
+  ev.target.reset();
+  document.getElementById('studentId').value='';
+});
 
-  document.getElementById('search').addEventListener('input', ()=>render(allStudents));
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  document.getElementById('studentForm').reset();
+  document.getElementById('studentId').value='';
+});
 
+document.getElementById('search').addEventListener('input', ()=>render(allStudents));
 </script>
 </body>
 </html>
