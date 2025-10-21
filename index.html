@@ -153,6 +153,7 @@
   }
   window.deleteStudentFirebase = deleteStudentFirebase;
 
+  // Editar alumno y hacer scroll al formulario
   window.editStudent = function (s) {
     document.getElementById("studentId").value = s.id;
     document.getElementById("name").value = s.name || "";
@@ -164,20 +165,31 @@
     document.querySelectorAll(".dayCheckbox").forEach(cb => {
       cb.checked = (s.days || []).includes(cb.value);
     });
+
+    // Scroll hacia el formulario
+    document.getElementById('studentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  window.renewStudent = async function (id) {
-    const nuevaFecha = new Date();
-    nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
-    const nuevaStr = nuevaFecha.toISOString().split("T")[0];
+  // Renovar fecha manteniendo día y año, solo cambia el mes
+  window.renewStudent = async function (id, currentDate) {
+    if (!currentDate) return;
+    const fecha = new Date(currentDate);
+    const diaOriginal = fecha.getDate();
+    fecha.setMonth(fecha.getMonth() + 1);
+
+    // Ajuste de días para meses cortos
+    if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
+
+    const nuevaStr = fecha.toISOString().split("T")[0];
     await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
   };
 
+  const allStudents = [];
   onSnapshot(studentsCol, snapshot => {
-    const students = [];
-    snapshot.forEach(docu => students.push({ id: docu.id, ...docu.data() }));
-    render(students);
-    renderScheduleGrid(students);
+    allStudents.length = 0;
+    snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
+    render(allStudents);
+    renderScheduleGrid(allStudents);
   });
 
   function render(students) {
@@ -200,7 +212,7 @@
       if (s.dueDate) {
         if (s.dueDate < hoy) {
           estado = `<span class="text-red-600 font-semibold">Vencido</span>`;
-          extraBtns += `<button onclick="renewStudent('${s.id}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1">Renovar</button>`;
+          extraBtns += `<button onclick="renewStudent('${s.id}','${s.dueDate}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1">Renovar</button>`;
         } else if (s.dueDate === hoy) {
           estado = `<span class="text-orange-500 font-semibold">Vence hoy</span>`;
         } else {
@@ -227,13 +239,7 @@
     });
   }
 
-  document.getElementById('search').addEventListener('input', () => {
-    onSnapshot(studentsCol, snapshot => {
-      const students = [];
-      snapshot.forEach(docu => students.push({ id: docu.id, ...docu.data() }));
-      render(students);
-    });
-  });
+  document.getElementById('search').addEventListener('input', () => render(allStudents));
 
   function renderScheduleGrid(students) {
     const days = ['Lun','Mar','Mié','Jue','Vie'];
