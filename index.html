@@ -113,6 +113,11 @@
           <h3 class="font-semibold">Cuadrícula semanal de asistencia por profesor y hora</h3>
           <div class="overflow-x-auto" id="scheduleContainer"></div>
         </div>
+
+        <div class="mt-8 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow" id="summaryContainer">
+          <h3 class="font-semibold mb-2">Resumen por profesor (alumnos al día / aviso de pago)</h3>
+          <div id="summaryContent" class="text-sm"></div>
+        </div>
       </div>
     </section>
 
@@ -187,6 +192,10 @@ function render(students) {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '';
   const search = document.getElementById('search').value.toLowerCase();
+  const hoy = new Date().toISOString().split("T")[0];
+
+  // Ordenar por fecha de pago
+  students.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
 
   students.filter(s => !search || s.name.toLowerCase().includes(search))
   .forEach(s => {
@@ -196,7 +205,6 @@ function render(students) {
         'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + (s.dueDate || '')
       )}` : '#';
 
-    const hoy = new Date().toISOString().split("T")[0];
     const extraBtns = s.dueDate && s.dueDate < hoy ? 
       `<button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1 renew-btn" data-id="${s.id}" data-date="${s.dueDate}">Renovar</button>` : "";
 
@@ -223,23 +231,17 @@ function render(students) {
     tbody.appendChild(tr);
   });
 
-  // Delegar eventos
   tbody.querySelectorAll('.renew-btn').forEach(btn => {
     btn.addEventListener('click', ev => {
-      const id = ev.currentTarget.dataset.id;
-      const date = ev.currentTarget.dataset.date;
-      renewStudent(id, date);
+      renewStudent(ev.currentTarget.dataset.id, ev.currentTarget.dataset.date);
     });
   });
   tbody.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', ev => {
-      const id = ev.currentTarget.dataset.id;
-      deleteStudentFirebase(id);
-    });
+    btn.addEventListener('click', ev => deleteStudentFirebase(ev.currentTarget.dataset.id));
   });
 }
 
-// Render cuadrícula
+// Render cuadrícula semanal
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
   const container = document.getElementById('scheduleContainer');
@@ -289,12 +291,44 @@ function renderScheduleGrid(students) {
   });
 }
 
+// Nuevo: resumen por profesor
+function renderSummaryByProfessor(students) {
+  const hoy = new Date().toISOString().split("T")[0];
+  const summaryContainer = document.getElementById("summaryContent");
+  summaryContainer.innerHTML = '';
+
+  const profMap = {};
+  students.forEach(s => {
+    if (!s.prof || !s.name) return;
+    if (!profMap[s.prof]) profMap[s.prof] = new Map();
+    if (!profMap[s.prof].has(s.name)) profMap[s.prof].set(s.name, s);
+  });
+
+  Object.keys(profMap).forEach(prof => {
+    const list = Array.from(profMap[prof].values());
+    const alDia = list.filter(s => s.dueDate && s.dueDate >= hoy);
+    const vencidos = list.filter(s => !s.dueDate || s.dueDate < hoy);
+
+    const profBlock = document.createElement("div");
+    profBlock.className = "mb-4";
+    profBlock.innerHTML = `
+      <h4 class="font-semibold text-slate-700 mb-1">${prof} (${alDia.length + vencidos.length} alumnos)</h4>
+      <ul class="list-disc ml-5 space-y-1">
+        ${alDia.map(s=>`<li>${s.name}</li>`).join('')}
+        ${vencidos.map(s=>`<li class="text-red-600">${s.name} — <span class="underline">Ver pago</span></li>`).join('')}
+      </ul>
+    `;
+    summaryContainer.appendChild(profBlock);
+  });
+}
+
 // Firestore snapshot
 onSnapshot(studentsCol, snapshot=>{
   allStudents.length=0;
   snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
   render(allStudents);
   renderScheduleGrid(allStudents);
+  renderSummaryByProfessor(allStudents);
 });
 
 // Formulario
