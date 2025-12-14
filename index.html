@@ -467,7 +467,7 @@ function renderSummaryByProfessor(students) {
   });
 
   Object.keys(profMap).forEach(prof => {
-    const list = Array.from(profMap[s.prof].values());
+    const list = Array.from(profMap[prof].values());
     const alDia = list.filter(s => s.dueDate && s.dueDate >= hoy);
     const vencidos = list.filter(s => !s.dueDate || s.dueDate < hoy);
 
@@ -775,16 +775,19 @@ if (!SpeechRecognition) {
     
     const textLower = text.toLowerCase();
     
+    // 1. DETECTAR CAMPO ENFOCADO
     const focusedElement = document.activeElement;
     const isInputField = focusedElement && (
       focusedElement.tagName === 'INPUT' || 
       focusedElement.tagName === 'TEXTAREA'
     );
     
+    // Si hay un campo enfocado de tipo texto, agregar ahí
     if (isInputField && 
         focusedElement.type !== 'checkbox' && 
         focusedElement.type !== 'date' && 
-        focusedElement.type !== 'time') {
+        focusedElement.type !== 'time' &&
+        focusedElement.id !== 'search') { // No autocompletar el buscador
       
       const currentValue = focusedElement.value;
       const newValue = currentValue ? currentValue + ' ' + text : text;
@@ -793,6 +796,10 @@ if (!SpeechRecognition) {
       return;
     }
     
+    // 2. DETECTAR Y COMPLETAR CAMPOS ESPECÍFICOS POR CONTEXTO
+    let camposCompletados = [];
+    
+    // ========== DÍAS DE LA SEMANA ==========
     const diasSemana = ['lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes'];
     const diasAbrev = { 
       'lunes': 'Lun', 
@@ -803,23 +810,28 @@ if (!SpeechRecognition) {
       'viernes': 'Vie' 
     };
     
+    let diasDetectados = [];
     diasSemana.forEach(dia => {
       if (textLower.includes(dia)) {
         const checkbox = Array.from(document.querySelectorAll('.dayCheckbox'))
           .find(cb => cb.value === diasAbrev[dia]);
-        if (checkbox) {
+        if (checkbox && !checkbox.checked) {
           checkbox.checked = true;
+          diasDetectados.push(diasAbrev[dia]);
           console.log('✅ Día marcado:', diasAbrev[dia]);
         }
       }
     });
+    if (diasDetectados.length > 0) camposCompletados.push('días');
     
+    // ========== HORARIO ==========
     const horaPatrones = [
       /(\d{1,2})\s*(?:de la |a las )?mañana/i,
       /(\d{1,2})\s*(?:de la |a las )?tarde/i,
       /(\d{1,2})\s*(?:de la |a las )?noche/i,
       /(\d{1,2})\s*(?::|y)\s*(\d{2})/i,
-      /(\d{1,2})\s*(?:am|pm)/i
+      /(\d{1,2})\s*(?:am|pm)/i,
+      /(\d{1,2})\s+horas/i
     ];
     
     for (let patron of horaPatrones) {
@@ -828,7 +840,8 @@ if (!SpeechRecognition) {
         let hora = parseInt(match[1]);
         let minutos = match[2] ? parseInt(match[2]) : 0;
         
-        if (textLower.includes('tarde') && hora < 12) {
+        // Ajustar AM/PM
+        if (textLower.includes('tarde') && hora < 12 && hora >= 1) {
           hora += 12;
         } else if (textLower.includes('noche') && hora < 12) {
           hora += 12;
@@ -836,78 +849,189 @@ if (!SpeechRecognition) {
           hora += 12;
         } else if (textLower.includes('am') && hora === 12) {
           hora = 0;
+        } else if (textLower.includes('mañana') && hora < 12 && hora >= 6) {
+          // Mantener hora de la mañana
         }
         
         const horaStr = hora.toString().padStart(2, '0') + ':' + minutos.toString().padStart(2, '0');
         const timeField = document.getElementById('fixedTime');
-        if (!timeField.value) {
+        if (!timeField.value || camposCompletados.includes('horario')) {
           timeField.value = horaStr;
+          camposCompletados.push('horario');
           console.log('✅ Hora detectada:', horaStr);
         }
         break;
       }
     }
     
+    // ========== PROFESOR ==========
     const profPatrones = [
-      /(?:profesor|profe|maestro|instructor|con)\s+([a-záéíóúñ]+)/i
+      /(?:profesor|profe|maestro|instructor|con el profesor|con la profesora|con)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
+      /(?:clase con|entrena con|instructor)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i
     ];
     
     for (let patron of profPatrones) {
       const match = text.match(patron);
       if (match) {
-        let profesor = match[1];
-        profesor = profesor.charAt(0).toUpperCase() + profesor.slice(1).toLowerCase();
+        let profesor = match[1].trim();
+        // Capitalizar cada palabra
+        profesor = profesor.split(' ')
+          .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+          .join(' ');
         const profField = document.getElementById('fixedProf');
-        if (!profField.value) {
+        if (!profField.value || camposCompletados.includes('profesor')) {
           profField.value = profesor;
+          camposCompletados.push('profesor');
           console.log('✅ Profesor detectado:', profesor);
         }
         break;
       }
     }
     
-    const phonePattern = /(?:\+?595|0)\s*\d{3}\s*\d{3}\s*\d{3}/;
-    const phoneMatch = text.match(phonePattern);
-    if (phoneMatch) {
-      const phoneField = document.getElementById('studentPhone');
-      if (!phoneField.value) {
-        phoneField.value = phoneMatch[0].replace(/\s/g, '');
-        console.log('✅ Teléfono detectado:', phoneMatch[0]);
+    // ========== WHATSAPP ==========
+    const phonePatterns = [
+      /(?:\+?595|0)\s*\d{3}\s*\d{3}\s*\d{3}/,
+      /\d{3}\s*\d{3}\s*\d{3}/,
+      /(?:teléfono|telefono|celular|whatsapp|número|numero)\s*(?:es|:)?\s*(\d+(?:\s*\d+)*)/i
+    ];
+    
+    for (let pattern of phonePatterns) {
+      const phoneMatch = text.match(pattern);
+      if (phoneMatch) {
+        const phoneField = document.getElementById('studentPhone');
+        let phone = phoneMatch[0].replace(/\s/g, '');
+        
+        // Si no tiene prefijo, agregarlo
+        if (!phone.startsWith('+') && !phone.startsWith('0')) {
+          phone = '+595' + phone;
+        }
+        
+        if (!phoneField.value || camposCompletados.includes('telefono')) {
+          phoneField.value = phone;
+          camposCompletados.push('telefono');
+          console.log('✅ Teléfono detectado:', phone);
+        }
+        break;
       }
     }
     
-    const tieneDias = diasSemana.some(dia => textLower.includes(dia));
-    const tieneHora = horaPatrones.some(p => textLower.match(p));
-    const tieneProf = profPatrones.some(p => text.match(p));
+    // ========== FECHAS ==========
+    // Detectar fechas habladas
+    const fechaPatrones = [
+      /(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:del?\s+)?(\d{4}))?/i,
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+      /(\d{4})-(\d{1,2})-(\d{1,2})/
+    ];
     
-    if (!tieneDias && !tieneHora && !tieneProf && text.length > 3) {
+    const meses = {
+      'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+      'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+      'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
+    };
+    
+    for (let patron of fechaPatrones) {
+      const match = textLower.match(patron);
+      if (match) {
+        let fechaStr = '';
+        
+        if (patron.source.includes('enero|febrero')) {
+          // Formato: "15 de marzo de 2025"
+          const dia = match[1].padStart(2, '0');
+          const mes = meses[match[2].toLowerCase()];
+          const año = match[3] || new Date().getFullYear();
+          fechaStr = `${año}-${mes}-${dia}`;
+        } else if (patron.source.includes('\\/')) {
+          // Formato: "15/03/2025"
+          fechaStr = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+        } else {
+          // Formato: "2025-03-15"
+          fechaStr = match[0];
+        }
+        
+        // Determinar si es fecha de inicio o de pago por contexto
+        if (textLower.includes('inicio') || textLower.includes('empieza') || textLower.includes('comienza')) {
+          const startField = document.getElementById('startDate');
+          if (!startField.value || camposCompletados.includes('fecha_inicio')) {
+            startField.value = fechaStr;
+            camposCompletados.push('fecha_inicio');
+            console.log('✅ Fecha de inicio detectada:', fechaStr);
+          }
+        } else if (textLower.includes('pago') || textLower.includes('vencimiento') || textLower.includes('vence')) {
+          const dueField = document.getElementById('dueDate');
+          if (!dueField.value || camposCompletados.includes('fecha_pago')) {
+            dueField.value = fechaStr;
+            camposCompletados.push('fecha_pago');
+            console.log('✅ Fecha de pago detectada:', fechaStr);
+          }
+        }
+        break;
+      }
+    }
+    
+    // ========== NOMBRE ==========
+    // Si no se detectó nada más específico, probablemente sea un nombre
+    const tieneDias = diasDetectados.length > 0;
+    const tieneHora = camposCompletados.includes('horario');
+    const tieneProf = camposCompletados.includes('profesor');
+    const tieneTelefono = camposCompletados.includes('telefono');
+    const tieneFecha = camposCompletados.includes('fecha_inicio') || camposCompletados.includes('fecha_pago');
+    
+    // Si no detectó ningún campo específico Y el texto es suficientemente largo, es probable que sea un nombre
+    if (!tieneDias && !tieneHora && !tieneProf && !tieneTelefono && !tieneFecha && text.length > 2) {
       const nameField = document.getElementById('name');
-      if (!nameField.value) {
-        const nombreCapitalizado = text.split(' ')
-          .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
+      
+      // Limpiar el texto de palabras clave comunes
+      let nombreLimpio = text
+        .replace(/(?:se llama|nombre|alumno|alumna|estudiante|es|el|la)\s*/gi, '')
+        .trim();
+      
+      if (nombreLimpio.length > 2) {
+        // Capitalizar nombre
+        const nombreCapitalizado = nombreLimpio.split(' ')
+          .map(palabra => {
+            if (palabra.length > 0) {
+              return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
+            }
+            return palabra;
+          })
           .join(' ');
-        nameField.value = nombreCapitalizado;
-        console.log('✅ Nombre detectado:', nombreCapitalizado);
-      } else {
-        nameField.value += ' ' + text;
+        
+        if (!nameField.value) {
+          nameField.value = nombreCapitalizado;
+          camposCompletados.push('nombre');
+          console.log('✅ Nombre detectado:', nombreCapitalizado);
+        } else {
+          // Si ya hay un nombre, agregar al final (podría ser apellido)
+          nameField.value += ' ' + nombreCapitalizado;
+          console.log('✅ Agregado al nombre:', nombreCapitalizado);
+        }
       }
     }
     
+    // ========== AUTO-COMPLETAR FECHAS SI ESTÁN VACÍAS ==========
     const startDateField = document.getElementById('startDate');
     const dueDateField = document.getElementById('dueDate');
     
-    if (!startDateField.value) {
-      const hoy = new Date();
-      startDateField.value = hoy.toISOString().split('T')[0];
-      console.log('✅ Fecha de inicio auto-completada');
+    // Solo autocompletar fechas si se completó algún otro campo
+    if (camposCompletados.length > 0) {
+      if (!startDateField.value) {
+        const hoy = new Date();
+        startDateField.value = hoy.toISOString().split('T')[0];
+        console.log('✅ Fecha de inicio auto-completada (hoy)');
+      }
+      
+      if (!dueDateField.value) {
+        const hoy = new Date();
+        const proximoMes = new Date(hoy);
+        proximoMes.setMonth(proximoMes.getMonth() + 1);
+        dueDateField.value = proximoMes.toISOString().split('T')[0];
+        console.log('✅ Fecha de pago auto-completada (próximo mes)');
+      }
     }
     
-    if (!dueDateField.value) {
-      const hoy = new Date();
-      const proximoMes = new Date(hoy);
-      proximoMes.setMonth(proximoMes.getMonth() + 1);
-      dueDateField.value = proximoMes.toISOString().split('T')[0];
-      console.log('✅ Fecha de pago auto-completada');
+    // Mostrar resumen de lo detectado
+    if (camposCompletados.length > 0) {
+      console.log('📋 Campos completados:', camposCompletados.join(', '));
     }
   }
   
@@ -916,4 +1040,4 @@ if (!SpeechRecognition) {
 
 </script>
 </body>
-  </html>
+</html>
