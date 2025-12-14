@@ -23,10 +23,71 @@
       pointer-events: none;
     }
     .max-w-7xl { position: relative; z-index: 1; }
+    
+    /* ========== ESTILOS AGREGADOS PARA VOZ ========== */
+    #voiceBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    #voiceBtn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    #voiceBtn.listening {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    #voiceStatus {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      max-width: 300px;
+      font-size: 14px;
+      z-index: 999;
+      display: none;
+    }
+    #voiceStatus.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    /* ========== FIN ESTILOS AGREGADOS ========== */
   </style>
 </head>
 <body class="text-slate-800">
   <div id="bg-overlay"></div>
+  
+  <!-- ========== BOTÓN DE VOZ AGREGADO ========== -->
+  <button id="voiceBtn" title="Presiona para hablar">🎤</button>
+  <div id="voiceStatus"></div>
+  <!-- ========== FIN BOTÓN DE VOZ ========== -->
+  
   <div class="max-w-7xl mx-auto p-6">
     <header class="mb-6 text-white drop-shadow-md">
       <h1 class="text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
@@ -122,9 +183,7 @@
     </section>
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow">Ahora conectado a Firebase Firestore.</footer>
-  </div>
-
-<script type="module">
+  </div><script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
@@ -143,6 +202,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const studentsCol = collection(db, "students");
 const allStudents = [];
+
+// ========== FUNCIÓN AGREGADA: Formatear fecha a DD/MM/YYYY ==========
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return '-';
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+}
+// ========== FIN FUNCIÓN AGREGADA ==========
 
 // Guardar alumno
 async function saveStudent(student) {
@@ -184,10 +251,10 @@ window.renewStudent = async function(id, currentDate) {
   if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
   const nuevaStr = fecha.toISOString().split("T")[0];
   await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
-  alert(`Fecha de próximo pago renovada: ${nuevaStr}`);
-};
-
-// Render tabla
+  // ========== MODIFICADO: Formato de fecha en el alert ==========
+  alert(`Fecha de próximo pago renovada: ${formatDateDDMMYYYY(nuevaStr)}`);
+  // ========== FIN MODIFICADO ==========
+};// Render tabla
 function render(students) {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '';
@@ -202,7 +269,9 @@ function render(students) {
     const classStr = (s.days || []).map(d => `${d} ${s.time} (${s.prof})`).join('<br/>');
     const waLink = s.studentPhone ? 
       `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
-        'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + (s.dueDate || '')
+        // ========== MODIFICADO: Formato de fecha en WhatsApp ==========
+        'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
+        // ========== FIN MODIFICADO ==========
       )}` : '#';
 
     const extraBtns = s.dueDate && s.dueDate < hoy ? 
@@ -212,7 +281,7 @@ function render(students) {
     tr.innerHTML = `
       <td class="p-2 align-top">${s.name}</td>
       <td class="p-2 align-top">${classStr}</td>
-      <td class="p-2 align-top">${s.dueDate || '-'}</td>
+      <td class="p-2 align-top">${formatDateDDMMYYYY(s.dueDate)}</td>
       <td class="p-2 align-top">
         ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
           s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
@@ -240,7 +309,6 @@ function render(students) {
     btn.addEventListener('click', ev => deleteStudentFirebase(ev.currentTarget.dataset.id));
   });
 }
-
 // Render cuadrícula semanal
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
@@ -290,8 +358,7 @@ function renderScheduleGrid(students) {
     container.appendChild(table);
   });
 }
-
-// Nuevo: resumen por profesor
+// ========== MODIFICADO: Resumen por profesor con links "Ver pago" funcionales ==========
 function renderSummaryByProfessor(students) {
   const hoy = new Date().toISOString().split("T")[0];
   const summaryContainer = document.getElementById("summaryContent");
@@ -311,17 +378,41 @@ function renderSummaryByProfessor(students) {
 
     const profBlock = document.createElement("div");
     profBlock.className = "mb-4";
+    
+    const alDiaHTML = alDia.map(s=>`<li>${s.name}</li>`).join('');
+    
+    // ========== MODIFICADO: Links "Ver pago" ahora son botones funcionales ==========
+    const vencidosHTML = vencidos.map(s=>`
+      <li class="text-red-600">
+        ${s.name} — 
+        <button 
+          class="underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0 ver-pago-btn" 
+          data-student='${JSON.stringify(s).replace(/'/g, "&apos;")}'
+        >Ver pago</button>
+      </li>
+    `).join('');
+    // ========== FIN MODIFICADO ==========
+    
     profBlock.innerHTML = `
       <h4 class="font-semibold text-slate-700 mb-1">${prof} (${alDia.length + vencidos.length} alumnos)</h4>
       <ul class="list-disc ml-5 space-y-1">
-        ${alDia.map(s=>`<li>${s.name}</li>`).join('')}
-        ${vencidos.map(s=>`<li class="text-red-600">${s.name} — <span class="underline">Ver pago</span></li>`).join('')}
+        ${alDiaHTML}
+        ${vencidosHTML}
       </ul>
     `;
     summaryContainer.appendChild(profBlock);
   });
+  
+  // ========== AGREGADO: Event listeners para los botones "Ver pago" ==========
+  summaryContainer.querySelectorAll('.ver-pago-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const studentData = JSON.parse(this.dataset.student.replace(/&apos;/g, "'"));
+      editStudent(studentData);
+    });
+  });
+  // ========== FIN AGREGADO ==========
 }
-
+// ========== FIN MODIFICADO ==========
 // Firestore snapshot
 onSnapshot(studentsCol, snapshot=>{
   allStudents.length=0;
@@ -355,6 +446,269 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('search').addEventListener('input', ()=>render(allStudents));
+// ========== INICIO: CÓDIGO DE RECONOCIMIENTO DE VOZ ==========
+// ========== INICIO: CÓDIGO DE RECONOCIMIENTO DE VOZ CORREGIDO ==========
+
+// Verificar soporte del navegador
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SpeechRecognition) {
+  const voiceBtn = document.getElementById('voiceBtn');
+  voiceBtn.style.opacity = '0.5';
+  voiceBtn.style.cursor = 'not-allowed';
+  voiceBtn.title = 'Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.';
+  voiceBtn.disabled = true;
+  console.error('SpeechRecognition no está disponible en este navegador');
+} else {
+  console.log('SpeechRecognition disponible, inicializando...');
+  
+  // Configurar reconocimiento de voz
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'es-ES';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  const voiceBtn = document.getElementById('voiceBtn');
+  const voiceStatus = document.getElementById('voiceStatus');
+  let isListening = false;
+
+  // Función para mostrar mensajes de estado
+  function showStatus(message, type = 'info') {
+    console.log('Estado:', message, type);
+    voiceStatus.textContent = message;
+    voiceStatus.className = 'show';
+    
+    if (type === 'listening') {
+      voiceStatus.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      voiceStatus.style.color = 'white';
+    } else if (type === 'success') {
+      voiceStatus.style.background = '#10b981';
+      voiceStatus.style.color = 'white';
+    } else if (type === 'error') {
+      voiceStatus.style.background = '#ef4444';
+      voiceStatus.style.color = 'white';
+    } else {
+      voiceStatus.style.background = 'white';
+      voiceStatus.style.color = '#1f2937';
+    }
+  }
+
+  function hideStatus() {
+    voiceStatus.classList.remove('show');
+  }
+
+  // Al hacer clic en el botón
+  voiceBtn.addEventListener('click', () => {
+    console.log('Botón de voz presionado. isListening:', isListening);
+    
+    if (isListening) {
+      console.log('Deteniendo reconocimiento...');
+      recognition.stop();
+      return;
+    }
+    
+    try {
+      console.log('Iniciando reconocimiento de voz...');
+      recognition.start();
+    } catch (error) {
+      console.error('Error al iniciar reconocimiento:', error);
+      showStatus('Error: ' + error.message, 'error');
+      setTimeout(hideStatus, 3000);
+    }
+  });
+
+  // Cuando empieza a escuchar
+  recognition.onstart = () => {
+    console.log('Reconocimiento iniciado');
+    isListening = true;
+    voiceBtn.classList.add('listening');
+    voiceBtn.textContent = '🔴';
+    showStatus('🎤 Escuchando... Habla ahora', 'listening');
+  };
+
+  // Cuando termina de escuchar
+  recognition.onend = () => {
+    console.log('Reconocimiento terminado');
+    isListening = false;
+    voiceBtn.classList.remove('listening');
+    voiceBtn.textContent = '🎤';
+  };
+
+  // Si hay un error
+  recognition.onerror = (event) => {
+    console.error('Error de reconocimiento:', event.error);
+    let errorMsg = 'Error desconocido';
+    
+    switch(event.error) {
+      case 'no-speech':
+        errorMsg = 'No se detectó voz. Intenta de nuevo.';
+        break;
+      case 'audio-capture':
+        errorMsg = 'No se detectó micrófono. Verifica los permisos.';
+        break;
+      case 'not-allowed':
+        errorMsg = 'Permiso de micrófono denegado. Habilítalo en la configuración del navegador.';
+        break;
+      case 'network':
+        errorMsg = 'Error de red. Verifica tu conexión.';
+        break;
+      case 'aborted':
+        errorMsg = 'Reconocimiento cancelado.';
+        break;
+      default:
+        errorMsg = 'Error: ' + event.error;
+    }
+    
+    showStatus(errorMsg, 'error');
+    isListening = false;
+    voiceBtn.classList.remove('listening');
+    voiceBtn.textContent = '🎤';
+    
+    setTimeout(hideStatus, 5000);
+  };
+
+  // Cuando se obtiene un resultado
+  recognition.onresult = (event) => {
+    console.log('Resultado obtenido:', event);
+    const transcript = event.results[0][0].transcript;
+    const confidence = event.results[0][0].confidence;
+    console.log('Texto reconocido:', transcript, 'Confianza:', confidence);
+    
+    showStatus('✅ Escuché: "' + transcript + '"', 'success');
+    
+    // Procesar el texto reconocido
+    parseVoiceInput(transcript);
+    
+    setTimeout(hideStatus, 5000);
+  };
+
+  // Función para procesar el texto de voz y rellenar el formulario
+  function parseVoiceInput(text) {
+    console.log('Procesando entrada de voz:', text);
+    const textLower = text.toLowerCase();
+    
+    // Días de la semana
+    const diasSemana = ['lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes'];
+    const diasAbrev = { 
+      'lunes': 'Lun', 
+      'martes': 'Mar', 
+      'miércoles': 'Mié', 
+      'miercoles': 'Mié',
+      'jueves': 'Jue', 
+      'viernes': 'Vie' 
+    };
+    
+    // 1. EXTRAER NOMBRE (todo antes del primer día de semana)
+    let nombre = '';
+    let primerDiaIndex = textLower.length;
+    
+    diasSemana.forEach(dia => {
+      const idx = textLower.indexOf(dia);
+      if (idx !== -1 && idx < primerDiaIndex) {
+        primerDiaIndex = idx;
+      }
+    });
+    
+    if (primerDiaIndex < textLower.length) {
+      nombre = text.substring(0, primerDiaIndex).trim();
+      nombre = nombre.replace(/[,.\s]+$/, '');
+      
+      if (nombre) {
+        nombre = nombre.split(' ')
+          .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
+          .join(' ');
+        document.getElementById('name').value = nombre;
+        console.log('Nombre detectado:', nombre);
+      }
+    }
+    
+    // 2. EXTRAER DÍAS DE LA SEMANA
+    const diasEncontrados = [];
+    Object.keys(diasAbrev).forEach(dia => {
+      if (textLower.includes(dia)) {
+        diasEncontrados.push(diasAbrev[dia]);
+      }
+    });
+    
+    console.log('Días detectados:', diasEncontrados);
+    
+    // Marcar checkboxes
+    document.querySelectorAll('.dayCheckbox').forEach(cb => {
+      cb.checked = diasEncontrados.includes(cb.value);
+    });
+    
+    // 3. EXTRAER HORARIO
+    const horaPatrones = [
+      /(\d{1,2})\s*(?:de la |a las )?mañana/i,
+      /(\d{1,2})\s*(?:de la |a las )?tarde/i,
+      /(\d{1,2})\s*(?:de la |a las )?noche/i,
+      /(\d{1,2})\s*(?::|h)\s*(\d{2})/i,
+      /(\d{1,2})\s*(?:am|pm)/i
+    ];
+    
+    for (let patron of horaPatrones) {
+      const match = textLower.match(patron);
+      if (match) {
+        let hora = parseInt(match[1]);
+        let minutos = match[2] ? parseInt(match[2]) : 0;
+        
+        // Ajustar AM/PM
+        if (textLower.includes('tarde') && hora < 12) {
+          hora += 12;
+        } else if (textLower.includes('noche') && hora < 12) {
+          hora += 12;
+        } else if (textLower.includes('pm') && hora < 12) {
+          hora += 12;
+        } else if (textLower.includes('am') && hora === 12) {
+          hora = 0;
+        }
+        
+        // Formatear hora
+        const horaStr = hora.toString().padStart(2, '0') + ':' + minutos.toString().padStart(2, '0');
+        document.getElementById('fixedTime').value = horaStr;
+        console.log('Hora detectada:', horaStr);
+        break;
+      }
+    }
+    
+    // 4. EXTRAER PROFESOR
+    const profPatrones = [
+      /(?:profesor|profe|maestro|instructor)\s+(\w+)/i,
+      /con\s+(\w+)\s*$/i
+    ];
+    
+    for (let patron of profPatrones) {
+      const match = text.match(patron);
+      if (match) {
+        let profesor = match[1];
+        profesor = profesor.charAt(0).toUpperCase() + profesor.slice(1).toLowerCase();
+        document.getElementById('fixedProf').value = profesor;
+        console.log('Profesor detectado:', profesor);
+        break;
+      }
+    }
+    
+    // 5. AUTO-COMPLETAR FECHAS SI ESTÁN VACÍAS
+    if (!document.getElementById('startDate').value) {
+      const hoy = new Date();
+      document.getElementById('startDate').value = hoy.toISOString().split('T')[0];
+      console.log('Fecha de inicio auto-completada');
+    }
+    
+    if (!document.getElementById('dueDate').value) {
+      const hoy = new Date();
+      const proximoMes = new Date(hoy);
+      proximoMes.setMonth(proximoMes.getMonth() + 1);
+      document.getElementById('dueDate').value = proximoMes.toISOString().split('T')[0];
+      console.log('Fecha de pago auto-completada');
+    }
+  }
+  
+  console.log('Sistema de reconocimiento de voz inicializado correctamente');
+}
+
+// ========== FIN: CÓDIGO DE RECONOCIMIENTO DE VOZ ==========
 </script>
 </body>
 </html>
