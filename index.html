@@ -101,6 +101,13 @@
       display: block;
       animation: slideIn 0.3s ease;
     }
+    /* ========== NUEVO: Indicador de campo activo ========== */
+    .field-active {
+      ring: 2px;
+      ring-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+      transition: all 0.2s ease;
+    }
   </style>
 </head>
 <body class="text-slate-800">
@@ -173,9 +180,7 @@
       <div class="md:col-span-2 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
         <div class="flex justify-between items-center mb-4">
           <h2 class="font-semibold">Alumnos registrados</h2>
-          <!-- ========== MODIFICADO: Placeholder mejorado ========== -->
           <input id="search" placeholder="Buscar por nombre, fecha o estado" class="border p-2 rounded" />
-          <!-- ========== FIN MODIFICADO ========== -->
         </div>
 
         <div id="tableWrap" class="overflow-x-auto">
@@ -208,7 +213,6 @@
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow">Ahora conectado a Firebase Firestore.</footer>
   </div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
@@ -274,11 +278,10 @@ window.renewStudent = async function(id, currentDate) {
   alert(`Fecha de próximo pago renovada: ${formatDateDDMMYYYY(nuevaStr)}`);
 };
 
-// ========== NUEVA FUNCIÓN: Búsqueda avanzada con múltiples criterios ==========
 function normalizeText(text) {
   if (!text) return '';
   return text.toString().toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 
@@ -297,18 +300,12 @@ function advancedSearch(students, searchTerm) {
   const hoy = new Date().toISOString().split("T")[0];
   
   return students.filter(s => {
-    // 1. Búsqueda por NOMBRE
     const nombreMatch = normalizeText(s.name).includes(normalizedSearch);
-    
-    // 2. Búsqueda por FECHA en formato DD/MM/YYYY
     const fechaPagoFormatted = formatDateDDMMYYYY(s.dueDate);
     const fechaMatch = fechaPagoFormatted.includes(searchTerm.trim());
-    
-    // 3. Búsqueda por ESTADO DE PAGO
     const estado = getStudentStatus(s.dueDate);
     const estadoMatch = normalizeText(estado).includes(normalizedSearch);
     
-    // Palabras clave alternativas para estados
     const estadoKeywords = {
       'vencido': ['vencido', 'atrasado', 'debe', 'pendiente', 'rojo'],
       'vence hoy': ['hoy', 'vence hoy', 'naranja'],
@@ -324,40 +321,26 @@ function advancedSearch(students, searchTerm) {
       }
     });
     
-    // 4. Búsqueda por PROFESOR
     const profMatch = normalizeText(s.prof || '').includes(normalizedSearch);
-    
-    // 5. Búsqueda por DÍAS
     const diasMatch = (s.days || []).some(dia => 
       normalizeText(dia).includes(normalizedSearch)
     );
-    
-    // 6. Búsqueda por HORARIO
     const horarioMatch = normalizeText(s.time || '').includes(normalizedSearch);
-    
-    // 7. Búsqueda por ID
     const idMatch = normalizeText(s.id || '').includes(normalizedSearch);
-    
-    // 8. Búsqueda por TELÉFONO
     const phoneMatch = (s.studentPhone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
     
     return nombreMatch || fechaMatch || estadoMatch || estadoKeywordMatch || 
            profMatch || diasMatch || horarioMatch || idMatch || phoneMatch;
   });
 }
-// ========== FIN NUEVA FUNCIÓN ==========
-
-// ========== MODIFICADO: Función render con búsqueda avanzada ==========
 function render(students) {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '';
   const search = document.getElementById('search').value;
   const hoy = new Date().toISOString().split("T")[0];
 
-  // Ordenar por fecha de pago
   students.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
 
-  // ⭐ APLICAR BÚSQUEDA AVANZADA
   const filteredStudents = advancedSearch(students, search);
 
   filteredStudents.forEach(s => {
@@ -402,7 +385,6 @@ function render(students) {
     btn.addEventListener('click', ev => deleteStudentFirebase(ev.currentTarget.dataset.id));
   });
 }
-// ========== FIN MODIFICADO ==========
 
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
@@ -453,7 +435,7 @@ function renderScheduleGrid(students) {
   });
 }
 
-// ========== MODIFICADO: Botón "Ver pago" ahora autocompleta el buscador ==========
+// ========== MODIFICADO: Función renderSummaryByProfessor con botón "Ver pago" mejorado ==========
 function renderSummaryByProfessor(students) {
   const hoy = new Date().toISOString().split("T")[0];
   const summaryContainer = document.getElementById("summaryContent");
@@ -476,13 +458,14 @@ function renderSummaryByProfessor(students) {
     
     const alDiaHTML = alDia.map(s=>`<li>${s.name}</li>`).join('');
     
-    // ⭐ MODIFICADO: Botón "Ver pago" ahora autocompleta el buscador
+    // ⭐ MODIFICADO: Botón "Ver pago" con funcionalidad mejorada
     const vencidosHTML = vencidos.map(s=>`
       <li class="text-red-600">
         ${s.name} — 
         <button 
           class="underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0 ver-pago-btn" 
           data-name="${s.name}"
+          title="Buscar automáticamente este alumno"
         >Ver pago</button>
       </li>
     `).join('');
@@ -497,29 +480,41 @@ function renderSummaryByProfessor(students) {
     summaryContainer.appendChild(profBlock);
   });
   
-  // ⭐ NUEVO: Event listeners para autocompletar buscador
+  // ⭐ MODIFICADO: Event listeners mejorados para autocompletar y buscar
   summaryContainer.querySelectorAll('.ver-pago-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
       const studentName = this.dataset.name;
       const searchField = document.getElementById('search');
       
-      // Autocompletar el buscador con el nombre del alumno
+      console.log('🔍 Ver pago clickeado para:', studentName);
+      
+      // 1. Autocompletar el buscador
       searchField.value = studentName;
       
-      // Ejecutar la búsqueda automáticamente
+      // 2. Ejecutar búsqueda automáticamente
       render(allStudents);
       
-      // Hacer scroll a la tabla de resultados
-      document.getElementById('tableWrap').scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
-      });
+      // 3. Scroll suave a la tabla
+      setTimeout(() => {
+        document.getElementById('tableWrap').scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
       
-      // Efecto visual en el campo de búsqueda
+      // 4. Efecto visual en el campo de búsqueda
       searchField.classList.add('ring-2', 'ring-blue-500');
       setTimeout(() => {
         searchField.classList.remove('ring-2', 'ring-blue-500');
       }, 1500);
+      
+      // 5. Enfocar el campo de búsqueda
+      searchField.focus();
+      
+      console.log('✅ Búsqueda ejecutada para:', studentName);
     });
   });
 }
@@ -555,10 +550,8 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
   document.getElementById('studentId').value='';
 });
 
-// ⭐ MODIFICADO: Evento de búsqueda ahora usa búsqueda avanzada
 document.getElementById('search').addEventListener('input', ()=>render(allStudents));
-
-// ========== RECONOCIMIENTO DE VOZ CONTINUO ==========
+// ========== RECONOCIMIENTO DE VOZ CONTINUO CON CAMPO BLOQUEADO ==========
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -570,7 +563,7 @@ if (!SpeechRecognition) {
   voiceBtn.disabled = true;
   console.error('SpeechRecognition no disponible');
 } else {
-  console.log('✅ SpeechRecognition disponible - Iniciando modo continuo');
+  console.log('✅ SpeechRecognition disponible - Iniciando modo continuo con campo bloqueado');
   
   const recognition = new SpeechRecognition();
   recognition.lang = 'es-ES';
@@ -585,6 +578,84 @@ if (!SpeechRecognition) {
   let isRecording = false;
   let fullTranscript = '';
   let restartTimeout = null;
+  
+  // ========== NUEVO: Variables para gestión de campo bloqueado ==========
+  let lockedField = null; // Campo actualmente bloqueado
+  let previousActiveElement = null; // Para rastrear cambios de foco
+  
+  // ========== NUEVO: Función para bloquear campo activo ==========
+  function lockActiveField(element) {
+    // Remover indicador visual del campo anterior
+    if (lockedField) {
+      lockedField.classList.remove('field-active');
+    }
+    
+    lockedField = element;
+    
+    if (lockedField) {
+      // Agregar indicador visual
+      lockedField.classList.add('field-active');
+      console.log('🔒 Campo bloqueado:', lockedField.id || lockedField.placeholder || 'sin identificador');
+      
+      // Mostrar en el status qué campo está activo
+      const fieldName = lockedField.id 
+        ? document.querySelector(`label[for="${lockedField.id}"] span`)?.textContent || lockedField.placeholder || lockedField.id
+        : lockedField.placeholder || 'campo activo';
+      
+      showStatus(`📝 Dictando en: ${fieldName}`, 'recording');
+    }
+  }
+  
+  // ========== NUEVO: Desbloquear campo ==========
+  function unlockField() {
+    if (lockedField) {
+      lockedField.classList.remove('field-active');
+      console.log('🔓 Campo desbloqueado');
+      lockedField = null;
+    }
+  }
+  
+  // ========== NUEVO: Event listeners para detectar cambios de foco ==========
+  document.addEventListener('focusin', (e) => {
+    const target = e.target;
+    
+    // Solo bloquear si es un input o textarea válido
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+      // Excluir tipos no textuales
+      if (target.type === 'checkbox' || 
+          target.type === 'radio' || 
+          target.type === 'submit' || 
+          target.type === 'button' ||
+          target.type === 'hidden') {
+        return;
+      }
+      
+      // Si está grabando, bloquear este campo
+      if (isRecording) {
+        lockActiveField(target);
+      }
+    }
+  });
+  
+  // ========== NUEVO: Detectar clic en campos para bloqueo manual ==========
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+      if (target.type === 'checkbox' || 
+          target.type === 'radio' || 
+          target.type === 'submit' || 
+          target.type === 'button' ||
+          target.type === 'hidden') {
+        return;
+      }
+      
+      // Si está grabando y se hace clic en un campo diferente, cambiar el bloqueo
+      if (isRecording && target !== lockedField) {
+        lockActiveField(target);
+      }
+    }
+  });
 
   function showStatus(message, type = 'info') {
     console.log('📢 Estado:', message);
@@ -630,6 +701,19 @@ if (!SpeechRecognition) {
       fullTranscript = '';
       recognition.start();
       console.log('🎤 Grabación continua iniciada');
+      
+      // ========== NUEVO: Bloquear campo activo al iniciar grabación ==========
+      const activeElement = document.activeElement;
+      if (activeElement && 
+          (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') &&
+          activeElement.type !== 'checkbox' &&
+          activeElement.type !== 'radio' &&
+          activeElement.type !== 'submit' &&
+          activeElement.type !== 'button' &&
+          activeElement.type !== 'hidden') {
+        lockActiveField(activeElement);
+      }
+      
     } catch (error) {
       console.error('❌ Error al iniciar:', error);
       showStatus('Error: ' + error.message, 'error');
@@ -643,6 +727,10 @@ if (!SpeechRecognition) {
     try {
       recognition.stop();
       console.log('⏹️ Grabación detenida');
+      
+      // ========== NUEVO: Desbloquear campo al detener ==========
+      unlockField();
+      
       if (restartTimeout) {
         clearTimeout(restartTimeout);
         restartTimeout = null;
@@ -668,7 +756,10 @@ if (!SpeechRecognition) {
     voiceBtn.classList.add('recording');
     voiceBtn.textContent = '🔴';
     voiceBtn.title = 'Presiona para detener';
-    showStatus('🎤 Grabando continuamente... Presiona nuevamente para detener', 'recording');
+    
+    if (!lockedField) {
+      showStatus('🎤 Grabando... Haz clic en un campo para dictar ahí', 'recording');
+    }
   };
 
   recognition.onend = () => {
@@ -678,6 +769,7 @@ if (!SpeechRecognition) {
     voiceBtn.textContent = '🎤';
     voiceBtn.title = 'Presiona para grabar continuamente';
     hideLiveTranscript();
+    unlockField();
     
     if (voiceBtn.classList.contains('recording')) {
       console.log('🔄 Reiniciando reconocimiento automáticamente...');
@@ -714,12 +806,14 @@ if (!SpeechRecognition) {
         isRecording = false;
         voiceBtn.classList.remove('recording');
         voiceBtn.textContent = '🎤';
+        unlockField();
         break;
       case 'not-allowed':
         errorMsg = 'Permiso de micrófono denegado. Habilítalo en la configuración.';
         isRecording = false;
         voiceBtn.classList.remove('recording');
         voiceBtn.textContent = '🎤';
+        unlockField();
         break;
       case 'network':
         errorMsg = 'Error de red. Verifica tu conexión.';
@@ -760,7 +854,12 @@ if (!SpeechRecognition) {
       fullTranscript += finalTranscript;
       console.log('📄 Texto acumulado:', fullTranscript);
       
-      autoCompleteForm(finalTranscript.trim());
+      // ========== MODIFICADO: Usar campo bloqueado si existe ==========
+      if (lockedField) {
+        fillLockedField(finalTranscript.trim());
+      } else {
+        autoCompleteForm(finalTranscript.trim());
+      }
       
       setTimeout(() => {
         if (!interimTranscript) {
@@ -770,36 +869,49 @@ if (!SpeechRecognition) {
     }
   };
 
+  // ========== NUEVA FUNCIÓN: Rellenar campo bloqueado ==========
+  function fillLockedField(text) {
+    if (!lockedField) {
+      console.warn('⚠️ No hay campo bloqueado');
+      return;
+    }
+    
+    console.log('✍️ Rellenando campo bloqueado con:', text);
+    
+    // ========== ACUMULACIÓN DE TEXTO ==========
+    const currentValue = lockedField.value || '';
+    
+    // Si el campo ya tiene contenido, agregar un espacio antes del nuevo texto
+    const separator = currentValue.trim() ? ' ' : '';
+    const newValue = currentValue + separator + text;
+    
+    lockedField.value = newValue;
+    
+    // Colocar el cursor al final
+    lockedField.setSelectionRange(newValue.length, newValue.length);
+    
+    // Disparar evento input para que se detecten cambios
+    lockedField.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    console.log('✅ Campo actualizado. Valor completo:', newValue);
+    
+    // Actualizar el status con el nombre del campo
+    const fieldName = lockedField.id 
+      ? document.querySelector(`label[for="${lockedField.id}"] span`)?.textContent || lockedField.placeholder || lockedField.id
+      : lockedField.placeholder || 'campo activo';
+    
+    showStatus(`📝 Dictando en: ${fieldName}`, 'recording');
+  }
+
+  // ========== FUNCIÓN ORIGINAL: autoCompleteForm (sin cambios significativos) ==========
   function autoCompleteForm(text) {
     console.log('🔄 Autocompletando formulario con:', text);
     
     const textLower = text.toLowerCase();
     
-    // 1. DETECTAR CAMPO ENFOCADO
-    const focusedElement = document.activeElement;
-    const isInputField = focusedElement && (
-      focusedElement.tagName === 'INPUT' || 
-      focusedElement.tagName === 'TEXTAREA'
-    );
-    
-    // Si hay un campo enfocado de tipo texto, agregar ahí
-    if (isInputField && 
-        focusedElement.type !== 'checkbox' && 
-        focusedElement.type !== 'date' && 
-        focusedElement.type !== 'time' &&
-        focusedElement.id !== 'search') { // No autocompletar el buscador
-      
-      const currentValue = focusedElement.value;
-      const newValue = currentValue ? currentValue + ' ' + text : text;
-      focusedElement.value = newValue;
-      console.log('✅ Texto agregado al campo enfocado:', focusedElement.id);
-      return;
-    }
-    
-    // 2. DETECTAR Y COMPLETAR CAMPOS ESPECÍFICOS POR CONTEXTO
     let camposCompletados = [];
     
-    // ========== DÍAS DE LA SEMANA ==========
+    // Días de la semana
     const diasSemana = ['lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes'];
     const diasAbrev = { 
       'lunes': 'Lun', 
@@ -824,7 +936,7 @@ if (!SpeechRecognition) {
     });
     if (diasDetectados.length > 0) camposCompletados.push('días');
     
-    // ========== HORARIO ==========
+    // Horario
     const horaPatrones = [
       /(\d{1,2})\s*(?:de la |a las )?mañana/i,
       /(\d{1,2})\s*(?:de la |a las )?tarde/i,
@@ -840,7 +952,6 @@ if (!SpeechRecognition) {
         let hora = parseInt(match[1]);
         let minutos = match[2] ? parseInt(match[2]) : 0;
         
-        // Ajustar AM/PM
         if (textLower.includes('tarde') && hora < 12 && hora >= 1) {
           hora += 12;
         } else if (textLower.includes('noche') && hora < 12) {
@@ -849,8 +960,6 @@ if (!SpeechRecognition) {
           hora += 12;
         } else if (textLower.includes('am') && hora === 12) {
           hora = 0;
-        } else if (textLower.includes('mañana') && hora < 12 && hora >= 6) {
-          // Mantener hora de la mañana
         }
         
         const horaStr = hora.toString().padStart(2, '0') + ':' + minutos.toString().padStart(2, '0');
@@ -864,7 +973,7 @@ if (!SpeechRecognition) {
       }
     }
     
-    // ========== PROFESOR ==========
+    // Profesor
     const profPatrones = [
       /(?:profesor|profe|maestro|instructor|con el profesor|con la profesora|con)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
       /(?:clase con|entrena con|instructor)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i
@@ -874,7 +983,6 @@ if (!SpeechRecognition) {
       const match = text.match(patron);
       if (match) {
         let profesor = match[1].trim();
-        // Capitalizar cada palabra
         profesor = profesor.split(' ')
           .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
           .join(' ');
@@ -888,7 +996,7 @@ if (!SpeechRecognition) {
       }
     }
     
-    // ========== WHATSAPP ==========
+    // WhatsApp
     const phonePatterns = [
       /(?:\+?595|0)\s*\d{3}\s*\d{3}\s*\d{3}/,
       /\d{3}\s*\d{3}\s*\d{3}/,
@@ -901,7 +1009,6 @@ if (!SpeechRecognition) {
         const phoneField = document.getElementById('studentPhone');
         let phone = phoneMatch[0].replace(/\s/g, '');
         
-        // Si no tiene prefijo, agregarlo
         if (!phone.startsWith('+') && !phone.startsWith('0')) {
           phone = '+595' + phone;
         }
@@ -915,8 +1022,7 @@ if (!SpeechRecognition) {
       }
     }
     
-    // ========== FECHAS ==========
-    // Detectar fechas habladas
+    // Fechas
     const fechaPatrones = [
       /(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:del?\s+)?(\d{4}))?/i,
       /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
@@ -935,20 +1041,16 @@ if (!SpeechRecognition) {
         let fechaStr = '';
         
         if (patron.source.includes('enero|febrero')) {
-          // Formato: "15 de marzo de 2025"
           const dia = match[1].padStart(2, '0');
           const mes = meses[match[2].toLowerCase()];
           const año = match[3] || new Date().getFullYear();
           fechaStr = `${año}-${mes}-${dia}`;
         } else if (patron.source.includes('\\/')) {
-          // Formato: "15/03/2025"
           fechaStr = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
         } else {
-          // Formato: "2025-03-15"
           fechaStr = match[0];
         }
         
-        // Determinar si es fecha de inicio o de pago por contexto
         if (textLower.includes('inicio') || textLower.includes('empieza') || textLower.includes('comienza')) {
           const startField = document.getElementById('startDate');
           if (!startField.value || camposCompletados.includes('fecha_inicio')) {
@@ -968,25 +1070,21 @@ if (!SpeechRecognition) {
       }
     }
     
-    // ========== NOMBRE ==========
-    // Si no se detectó nada más específico, probablemente sea un nombre
+    // Nombre
     const tieneDias = diasDetectados.length > 0;
     const tieneHora = camposCompletados.includes('horario');
     const tieneProf = camposCompletados.includes('profesor');
     const tieneTelefono = camposCompletados.includes('telefono');
     const tieneFecha = camposCompletados.includes('fecha_inicio') || camposCompletados.includes('fecha_pago');
     
-    // Si no detectó ningún campo específico Y el texto es suficientemente largo, es probable que sea un nombre
     if (!tieneDias && !tieneHora && !tieneProf && !tieneTelefono && !tieneFecha && text.length > 2) {
       const nameField = document.getElementById('name');
       
-      // Limpiar el texto de palabras clave comunes
       let nombreLimpio = text
         .replace(/(?:se llama|nombre|alumno|alumna|estudiante|es|el|la)\s*/gi, '')
         .trim();
       
       if (nombreLimpio.length > 2) {
-        // Capitalizar nombre
         const nombreCapitalizado = nombreLimpio.split(' ')
           .map(palabra => {
             if (palabra.length > 0) {
@@ -1001,18 +1099,16 @@ if (!SpeechRecognition) {
           camposCompletados.push('nombre');
           console.log('✅ Nombre detectado:', nombreCapitalizado);
         } else {
-          // Si ya hay un nombre, agregar al final (podría ser apellido)
           nameField.value += ' ' + nombreCapitalizado;
           console.log('✅ Agregado al nombre:', nombreCapitalizado);
         }
       }
     }
     
-    // ========== AUTO-COMPLETAR FECHAS SI ESTÁN VACÍAS ==========
+    // Auto-completar fechas
     const startDateField = document.getElementById('startDate');
     const dueDateField = document.getElementById('dueDate');
     
-    // Solo autocompletar fechas si se completó algún otro campo
     if (camposCompletados.length > 0) {
       if (!startDateField.value) {
         const hoy = new Date();
@@ -1029,13 +1125,12 @@ if (!SpeechRecognition) {
       }
     }
     
-    // Mostrar resumen de lo detectado
     if (camposCompletados.length > 0) {
       console.log('📋 Campos completados:', camposCompletados.join(', '));
     }
   }
   
-  console.log('✅ Sistema de reconocimiento de voz continuo inicializado');
+  console.log('✅ Sistema de reconocimiento de voz continuo con campo bloqueado inicializado');
 }
 
 </script>
