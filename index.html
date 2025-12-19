@@ -209,56 +209,79 @@ function advancedSearch(students, searchTerm) {
   if (!searchTerm || !searchTerm.trim()) return students;
   
   const normalizedSearch = normalizeText(searchTerm);
+  const searchLower = searchTerm.toLowerCase().trim();
   
   console.log('🔎 Buscando:', searchTerm, '| Normalizado:', normalizedSearch);
   
+  // Si la búsqueda es muy corta (1-2 caracteres), requerir coincidencia más estricta
+  const isShortSearch = normalizedSearch.length <= 2;
+  
   const filtered = students.filter(s => {
     const nombreNormalizado = normalizeText(s.name);
-    const nombreMatch = nombreNormalizado.includes(normalizedSearch);
     
-    // Si el nombre coincide exactamente o casi exactamente, solo devolver ese alumno
-    if (nombreNormalizado === normalizedSearch || nombreMatch) {
-      console.log('✅ Match de nombre encontrado:', s.name);
-      return true;
+    // Para búsquedas cortas, buscar palabras que EMPIECEN con la búsqueda
+    let nombreMatch;
+    if (isShortSearch) {
+      const palabrasNombre = nombreNormalizado.split(/\s+/);
+      nombreMatch = palabrasNombre.some(palabra => palabra.startsWith(normalizedSearch));
+    } else {
+      nombreMatch = nombreNormalizado.includes(normalizedSearch);
     }
     
-    // Solo buscar en otros campos si NO es un nombre completo (menos de 2 palabras)
-    const palabras = searchTerm.trim().split(/\s+/).length;
-    if (palabras >= 2) {
-      // Si tiene 2+ palabras, asumir que es un nombre y no buscar en otros campos
-      return false;
+    // Búsqueda en profesor
+    const profNormalizado = normalizeText(s.prof || '');
+    let profMatch;
+    if (isShortSearch) {
+      const palabrasProf = profNormalizado.split(/\s+/);
+      profMatch = palabrasProf.some(palabra => palabra.startsWith(normalizedSearch));
+    } else {
+      profMatch = profNormalizado.includes(normalizedSearch);
     }
     
-    // Para búsquedas de una palabra, buscar en todos los campos
+    // Búsqueda en días (Lun, Mar, Mié, Jue, Vie)
+    const diasNormalizados = (s.days || []).map(d => normalizeText(d));
+    const diasMatch = diasNormalizados.some(dia => dia.startsWith(normalizedSearch));
+    
+    // Búsqueda en horario (formato HH:MM)
+    const horarioMatch = (s.time || '').includes(searchTerm.trim());
+    
+    // Búsqueda en fecha de pago (formato DD/MM/YYYY)
     const fechaPagoFormatted = formatDateDDMMYYYY(s.dueDate);
     const fechaMatch = fechaPagoFormatted.includes(searchTerm.trim());
-    const estado = getStudentStatus(s.dueDate);
-    const estadoMatch = normalizeText(estado).includes(normalizedSearch);
     
+    // Búsqueda en estado (al día, vencido, vence hoy)
+    const estado = getStudentStatus(s.dueDate);
+    const estadoNormalizado = normalizeText(estado);
+    const estadoMatch = estadoNormalizado.startsWith(normalizedSearch) || estadoNormalizado.includes(normalizedSearch);
+    
+    // Keywords de estado
     const estadoKeywords = {
       'vencido': ['vencido', 'atrasado', 'debe', 'pendiente', 'rojo'],
       'vence hoy': ['hoy', 'vence hoy', 'naranja'],
-      'al dia': ['al dia', 'pagado', 'verde', 'corriente']
+      'al dia': ['al dia', 'pagado', 'verde', 'corriente', 'aldia']
     };
     
     let estadoKeywordMatch = false;
     Object.keys(estadoKeywords).forEach(key => {
       if (estado === key) {
         estadoKeywordMatch = estadoKeywords[key].some(keyword => 
-          normalizedSearch.includes(normalizeText(keyword))
+          normalizedSearch === normalizeText(keyword) || normalizeText(keyword).startsWith(normalizedSearch)
         );
       }
     });
     
-    const profMatch = normalizeText(s.prof || '').includes(normalizedSearch);
-    const diasMatch = (s.days || []).some(dia => 
-      normalizeText(dia).includes(normalizedSearch)
-    );
-    const horarioMatch = normalizeText(s.time || '').includes(normalizedSearch);
-    const phoneMatch = (s.studentPhone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
+    // Búsqueda en teléfono/WhatsApp
+    const phoneMatch = searchTerm.replace(/\D/g, '').length >= 3 && 
+                       (s.studentPhone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
     
-    return fechaMatch || estadoMatch || estadoKeywordMatch || 
-           profMatch || diasMatch || horarioMatch || phoneMatch;
+    const match = nombreMatch || profMatch || diasMatch || horarioMatch || 
+           fechaMatch || estadoMatch || estadoKeywordMatch || phoneMatch;
+    
+    if (match) {
+      console.log('✅ Match encontrado:', s.name);
+    }
+    
+    return match;
   });
   
   console.log('📊 Total filtrados:', filtered.length, 'de', students.length);
@@ -413,24 +436,30 @@ function renderSummaryByProfessor(students) {
         e.preventDefault();
         e.stopPropagation();
         
-        console.log('🔍 Buscando alumno:', s.name);
+        const studentName = s.name;
+        console.log('🔍 Ver pago clickeado para:', studentName);
         
         const searchField = document.getElementById('search');
-        searchField.value = s.name;
+        searchField.value = studentName;
+        
+        console.log('📝 Campo de búsqueda actualizado a:', searchField.value);
         
         // Forzar re-render inmediatamente
         render(allStudents);
         
-        console.log('✅ Render ejecutado, alumnos filtrados');
+        console.log('✅ Render ejecutado');
         
+        // Scroll a la tabla
         setTimeout(() => {
           const tableWrap = document.getElementById('tableWrap');
           if (tableWrap) {
+            console.log('📜 Haciendo scroll a la tabla');
             tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 100);
         
-        searchField.classList.add('ring-2', 'ring-blue-500', 'transition-all');
+        // Efecto visual
+        searchField.classList.add('ring-2', 'ring-blue-500');
         setTimeout(() => {
           searchField.classList.remove('ring-2', 'ring-blue-500');
         }, 2000);
