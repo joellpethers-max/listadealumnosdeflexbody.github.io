@@ -23,99 +23,10 @@
       pointer-events: none;
     }
     .max-w-7xl { position: relative; z-index: 1; }
-    
-    #voiceBtn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      cursor: pointer;
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-      z-index: 1000;
-    }
-    #voiceBtn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-    }
-    #voiceBtn.recording {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-      animation: pulseRecording 1.5s infinite;
-    }
-    @keyframes pulseRecording {
-      0%, 100% { 
-        transform: scale(1); 
-        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.5);
-      }
-      50% { 
-        transform: scale(1.08); 
-        box-shadow: 0 6px 25px rgba(245, 87, 108, 0.8);
-      }
-    }
-    #voiceStatus {
-      position: fixed;
-      bottom: 90px;
-      right: 20px;
-      background: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      max-width: 300px;
-      font-size: 14px;
-      z-index: 999;
-      display: none;
-    }
-    #voiceStatus.show {
-      display: block;
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    #liveTranscript {
-      position: fixed;
-      bottom: 160px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 10px 15px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      max-width: 350px;
-      font-size: 13px;
-      z-index: 998;
-      display: none;
-      color: #1f2937;
-      border-left: 4px solid #667eea;
-    }
-    #liveTranscript.show {
-      display: block;
-      animation: slideIn 0.3s ease;
-    }
-    /* ========== NUEVO: Indicador de campo activo ========== */
-    .field-active {
-      ring: 2px;
-      ring-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
-      transition: all 0.2s ease;
-    }
   </style>
 </head>
 <body class="text-slate-800">
   <div id="bg-overlay"></div>
-  
-  <button id="voiceBtn" title="Presiona para grabar continuamente">🎤</button>
-  <div id="voiceStatus"></div>
-  <div id="liveTranscript"></div>
   
   <div class="max-w-7xl mx-auto p-6">
     <header class="mb-6 text-white drop-shadow-md">
@@ -213,6 +124,7 @@
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow">Ahora conectado a Firebase Firestore.</footer>
   </div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
@@ -297,10 +209,27 @@ function advancedSearch(students, searchTerm) {
   if (!searchTerm || !searchTerm.trim()) return students;
   
   const normalizedSearch = normalizeText(searchTerm);
-  const hoy = new Date().toISOString().split("T")[0];
   
-  return students.filter(s => {
-    const nombreMatch = normalizeText(s.name).includes(normalizedSearch);
+  console.log('🔎 Buscando:', searchTerm, '| Normalizado:', normalizedSearch);
+  
+  const filtered = students.filter(s => {
+    const nombreNormalizado = normalizeText(s.name);
+    const nombreMatch = nombreNormalizado.includes(normalizedSearch);
+    
+    // Si el nombre coincide exactamente o casi exactamente, solo devolver ese alumno
+    if (nombreNormalizado === normalizedSearch || nombreMatch) {
+      console.log('✅ Match de nombre encontrado:', s.name);
+      return true;
+    }
+    
+    // Solo buscar en otros campos si NO es un nombre completo (menos de 2 palabras)
+    const palabras = searchTerm.trim().split(/\s+/).length;
+    if (palabras >= 2) {
+      // Si tiene 2+ palabras, asumir que es un nombre y no buscar en otros campos
+      return false;
+    }
+    
+    // Para búsquedas de una palabra, buscar en todos los campos
     const fechaPagoFormatted = formatDateDDMMYYYY(s.dueDate);
     const fechaMatch = fechaPagoFormatted.includes(searchTerm.trim());
     const estado = getStudentStatus(s.dueDate);
@@ -326,13 +255,17 @@ function advancedSearch(students, searchTerm) {
       normalizeText(dia).includes(normalizedSearch)
     );
     const horarioMatch = normalizeText(s.time || '').includes(normalizedSearch);
-    const idMatch = normalizeText(s.id || '').includes(normalizedSearch);
     const phoneMatch = (s.studentPhone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
     
-    return nombreMatch || fechaMatch || estadoMatch || estadoKeywordMatch || 
-           profMatch || diasMatch || horarioMatch || idMatch || phoneMatch;
+    return fechaMatch || estadoMatch || estadoKeywordMatch || 
+           profMatch || diasMatch || horarioMatch || phoneMatch;
   });
+  
+  console.log('📊 Total filtrados:', filtered.length, 'de', students.length);
+  
+  return filtered;
 }
+
 function render(students) {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '';
@@ -435,7 +368,6 @@ function renderScheduleGrid(students) {
   });
 }
 
-// ========== MODIFICADO: Función renderSummaryByProfessor con botón "Ver pago" mejorado ==========
 function renderSummaryByProfessor(students) {
   const hoy = new Date().toISOString().split("T")[0];
   const summaryContainer = document.getElementById("summaryContent");
@@ -456,69 +388,69 @@ function renderSummaryByProfessor(students) {
     const profBlock = document.createElement("div");
     profBlock.className = "mb-4";
     
-    const alDiaHTML = alDia.map(s=>`<li>${s.name}</li>`).join('');
+    const alDiaList = document.createElement("ul");
+    alDiaList.className = "list-disc ml-5 space-y-1";
     
-    // ⭐ MODIFICADO: Botón "Ver pago" con funcionalidad mejorada
-    const vencidosHTML = vencidos.map(s=>`
-      <li class="text-red-600">
-        ${s.name} — 
-        <button 
-          class="underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0 ver-pago-btn" 
-          data-name="${s.name}"
-          title="Buscar automáticamente este alumno"
-        >Ver pago</button>
-      </li>
-    `).join('');
+    alDia.forEach(s => {
+      const li = document.createElement("li");
+      li.textContent = s.name;
+      alDiaList.appendChild(li);
+    });
     
-    profBlock.innerHTML = `
-      <h4 class="font-semibold text-slate-700 mb-1">${prof} (${alDia.length + vencidos.length} alumnos)</h4>
-      <ul class="list-disc ml-5 space-y-1">
-        ${alDiaHTML}
-        ${vencidosHTML}
-      </ul>
-    `;
+    vencidos.forEach(s => {
+      const li = document.createElement("li");
+      li.className = "text-red-600";
+      
+      const text = document.createTextNode(s.name + " — ");
+      li.appendChild(text);
+      
+      const btn = document.createElement("button");
+      btn.className = "underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0";
+      btn.textContent = "Ver pago";
+      btn.title = "Buscar automáticamente este alumno";
+      
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🔍 Buscando alumno:', s.name);
+        
+        const searchField = document.getElementById('search');
+        searchField.value = s.name;
+        
+        // Forzar re-render inmediatamente
+        render(allStudents);
+        
+        console.log('✅ Render ejecutado, alumnos filtrados');
+        
+        setTimeout(() => {
+          const tableWrap = document.getElementById('tableWrap');
+          if (tableWrap) {
+            tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+        
+        searchField.classList.add('ring-2', 'ring-blue-500', 'transition-all');
+        setTimeout(() => {
+          searchField.classList.remove('ring-2', 'ring-blue-500');
+        }, 2000);
+        
+        searchField.focus();
+      });
+      
+      li.appendChild(btn);
+      alDiaList.appendChild(li);
+    });
+    
+    const title = document.createElement("h4");
+    title.className = "font-semibold text-slate-700 mb-1";
+    title.textContent = `${prof} (${alDia.length + vencidos.length} alumnos)`;
+    
+    profBlock.appendChild(title);
+    profBlock.appendChild(alDiaList);
     summaryContainer.appendChild(profBlock);
   });
-  
-  // ⭐ MODIFICADO: Event listeners mejorados para autocompletar y buscar
-  summaryContainer.querySelectorAll('.ver-pago-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const studentName = this.dataset.name;
-      const searchField = document.getElementById('search');
-      
-      console.log('🔍 Ver pago clickeado para:', studentName);
-      
-      // 1. Autocompletar el buscador
-      searchField.value = studentName;
-      
-      // 2. Ejecutar búsqueda automáticamente
-      render(allStudents);
-      
-      // 3. Scroll suave a la tabla
-      setTimeout(() => {
-        document.getElementById('tableWrap').scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
-        });
-      }, 100);
-      
-      // 4. Efecto visual en el campo de búsqueda
-      searchField.classList.add('ring-2', 'ring-blue-500');
-      setTimeout(() => {
-        searchField.classList.remove('ring-2', 'ring-blue-500');
-      }, 1500);
-      
-      // 5. Enfocar el campo de búsqueda
-      searchField.focus();
-      
-      console.log('✅ Búsqueda ejecutada para:', studentName);
-    });
-  });
 }
-// ========== FIN MODIFICADO ==========
 
 onSnapshot(studentsCol, snapshot=>{
   allStudents.length=0;
@@ -551,587 +483,6 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
 });
 
 document.getElementById('search').addEventListener('input', ()=>render(allStudents));
-// ========== RECONOCIMIENTO DE VOZ CONTINUO CON CAMPO BLOQUEADO ==========
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-if (!SpeechRecognition) {
-  const voiceBtn = document.getElementById('voiceBtn');
-  voiceBtn.style.opacity = '0.5';
-  voiceBtn.style.cursor = 'not-allowed';
-  voiceBtn.title = 'Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.';
-  voiceBtn.disabled = true;
-  console.error('SpeechRecognition no disponible');
-} else {
-  console.log('✅ SpeechRecognition disponible - Iniciando modo continuo con campo bloqueado');
-  
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'es-ES';
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-
-  const voiceBtn = document.getElementById('voiceBtn');
-  const voiceStatus = document.getElementById('voiceStatus');
-  const liveTranscript = document.getElementById('liveTranscript');
-  
-  let isRecording = false;
-  let fullTranscript = '';
-  let restartTimeout = null;
-  
-  // ========== NUEVO: Variables para gestión de campo bloqueado ==========
-  let lockedField = null; // Campo actualmente bloqueado
-  let previousActiveElement = null; // Para rastrear cambios de foco
-  
-  // ========== NUEVO: Función para bloquear campo activo ==========
-  function lockActiveField(element) {
-    // Remover indicador visual del campo anterior
-    if (lockedField) {
-      lockedField.classList.remove('field-active');
-    }
-    
-    lockedField = element;
-    
-    if (lockedField) {
-      // Agregar indicador visual
-      lockedField.classList.add('field-active');
-      console.log('🔒 Campo bloqueado:', lockedField.id || lockedField.placeholder || 'sin identificador');
-      
-      // Mostrar en el status qué campo está activo
-      const fieldName = lockedField.id 
-        ? document.querySelector(`label[for="${lockedField.id}"] span`)?.textContent || lockedField.placeholder || lockedField.id
-        : lockedField.placeholder || 'campo activo';
-      
-      showStatus(`📝 Dictando en: ${fieldName}`, 'recording');
-    }
-  }
-  
-  // ========== NUEVO: Desbloquear campo ==========
-  function unlockField() {
-    if (lockedField) {
-      lockedField.classList.remove('field-active');
-      console.log('🔓 Campo desbloqueado');
-      lockedField = null;
-    }
-  }
-  
-  // ========== NUEVO: Event listeners para detectar cambios de foco ==========
-  document.addEventListener('focusin', (e) => {
-    const target = e.target;
-    
-    // Solo bloquear si es un input o textarea válido
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-      // Excluir tipos no textuales
-      if (target.type === 'checkbox' || 
-          target.type === 'radio' || 
-          target.type === 'submit' || 
-          target.type === 'button' ||
-          target.type === 'hidden') {
-        return;
-      }
-      
-      // Si está grabando, bloquear este campo
-      if (isRecording) {
-        lockActiveField(target);
-      }
-    }
-  });
-  
-  // ========== NUEVO: Detectar clic en campos para bloqueo manual ==========
-  document.addEventListener('click', (e) => {
-    const target = e.target;
-    
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-      if (target.type === 'checkbox' || 
-          target.type === 'radio' || 
-          target.type === 'submit' || 
-          target.type === 'button' ||
-          target.type === 'hidden') {
-        return;
-      }
-      
-      // Si está grabando y se hace clic en un campo diferente, cambiar el bloqueo
-      if (isRecording && target !== lockedField) {
-        lockActiveField(target);
-      }
-    }
-  });
-
-  function showStatus(message, type = 'info') {
-    console.log('📢 Estado:', message);
-    voiceStatus.textContent = message;
-    voiceStatus.className = 'show';
-    
-    if (type === 'recording') {
-      voiceStatus.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-      voiceStatus.style.color = 'white';
-    } else if (type === 'success') {
-      voiceStatus.style.background = '#10b981';
-      voiceStatus.style.color = 'white';
-    } else if (type === 'error') {
-      voiceStatus.style.background = '#ef4444';
-      voiceStatus.style.color = 'white';
-    } else {
-      voiceStatus.style.background = 'white';
-      voiceStatus.style.color = '#1f2937';
-    }
-  }
-
-  function hideStatus() {
-    voiceStatus.classList.remove('show');
-  }
-
-  function updateLiveTranscript(text) {
-    if (text.trim()) {
-      liveTranscript.textContent = '💬 ' + text;
-      liveTranscript.classList.add('show');
-    } else {
-      liveTranscript.classList.remove('show');
-    }
-  }
-
-  function hideLiveTranscript() {
-    liveTranscript.classList.remove('show');
-  }
-
-  function startRecording() {
-    if (isRecording) return;
-    
-    try {
-      fullTranscript = '';
-      recognition.start();
-      console.log('🎤 Grabación continua iniciada');
-      
-      // ========== NUEVO: Bloquear campo activo al iniciar grabación ==========
-      const activeElement = document.activeElement;
-      if (activeElement && 
-          (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') &&
-          activeElement.type !== 'checkbox' &&
-          activeElement.type !== 'radio' &&
-          activeElement.type !== 'submit' &&
-          activeElement.type !== 'button' &&
-          activeElement.type !== 'hidden') {
-        lockActiveField(activeElement);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error al iniciar:', error);
-      showStatus('Error: ' + error.message, 'error');
-      setTimeout(hideStatus, 3000);
-    }
-  }
-
-  function stopRecording() {
-    if (!isRecording) return;
-    
-    try {
-      recognition.stop();
-      console.log('⏹️ Grabación detenida');
-      
-      // ========== NUEVO: Desbloquear campo al detener ==========
-      unlockField();
-      
-      if (restartTimeout) {
-        clearTimeout(restartTimeout);
-        restartTimeout = null;
-      }
-    } catch (error) {
-      console.error('❌ Error al detener:', error);
-    }
-  }
-
-  voiceBtn.addEventListener('click', () => {
-    console.log('🔘 Botón presionado. isRecording:', isRecording);
-    
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  });
-
-  recognition.onstart = () => {
-    console.log('✅ Reconocimiento iniciado');
-    isRecording = true;
-    voiceBtn.classList.add('recording');
-    voiceBtn.textContent = '🔴';
-    voiceBtn.title = 'Presiona para detener';
-    
-    if (!lockedField) {
-      showStatus('🎤 Grabando... Haz clic en un campo para dictar ahí', 'recording');
-    }
-  };
-
-  recognition.onend = () => {
-    console.log('🛑 Reconocimiento finalizado');
-    isRecording = false;
-    voiceBtn.classList.remove('recording');
-    voiceBtn.textContent = '🎤';
-    voiceBtn.title = 'Presiona para grabar continuamente';
-    hideLiveTranscript();
-    unlockField();
-    
-    if (voiceBtn.classList.contains('recording')) {
-      console.log('🔄 Reiniciando reconocimiento automáticamente...');
-      restartTimeout = setTimeout(() => {
-        if (isRecording) {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.error('Error al reiniciar:', e);
-          }
-        }
-      }, 300);
-    } else {
-      showStatus('✅ Grabación finalizada', 'success');
-      setTimeout(hideStatus, 2000);
-    }
-  };
-
-  recognition.onerror = (event) => {
-    console.error('❌ Error de reconocimiento:', event.error);
-    
-    let errorMsg = 'Error desconocido';
-    
-    switch(event.error) {
-      case 'no-speech':
-        if (isRecording) {
-          console.log('🔄 Sin habla detectada, continuando...');
-          return;
-        }
-        errorMsg = 'No se detectó voz. Intenta de nuevo.';
-        break;
-      case 'audio-capture':
-        errorMsg = 'No se detectó micrófono. Verifica los permisos.';
-        isRecording = false;
-        voiceBtn.classList.remove('recording');
-        voiceBtn.textContent = '🎤';
-        unlockField();
-        break;
-      case 'not-allowed':
-        errorMsg = 'Permiso de micrófono denegado. Habilítalo en la configuración.';
-        isRecording = false;
-        voiceBtn.classList.remove('recording');
-        voiceBtn.textContent = '🎤';
-        unlockField();
-        break;
-      case 'network':
-        errorMsg = 'Error de red. Verifica tu conexión.';
-        break;
-      case 'aborted':
-        console.log('⚠️ Reconocimiento abortado');
-        return;
-      default:
-        errorMsg = 'Error: ' + event.error;
-    }
-    
-    showStatus(errorMsg, 'error');
-    setTimeout(hideStatus, 5000);
-  };
-
-  recognition.onresult = (event) => {
-    console.log('📝 Resultado recibido');
-    
-    let interimTranscript = '';
-    let finalTranscript = '';
-    
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-      
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript + ' ';
-        console.log('✅ Transcripción final:', transcript);
-      } else {
-        interimTranscript += transcript;
-      }
-    }
-    
-    if (interimTranscript) {
-      updateLiveTranscript(interimTranscript);
-    }
-    
-    if (finalTranscript.trim()) {
-      fullTranscript += finalTranscript;
-      console.log('📄 Texto acumulado:', fullTranscript);
-      
-      // ========== MODIFICADO: Usar campo bloqueado si existe ==========
-      if (lockedField) {
-        fillLockedField(finalTranscript.trim());
-      } else {
-        autoCompleteForm(finalTranscript.trim());
-      }
-      
-      setTimeout(() => {
-        if (!interimTranscript) {
-          hideLiveTranscript();
-        }
-      }, 1000);
-    }
-  };
-
-  // ========== NUEVA FUNCIÓN: Rellenar campo bloqueado ==========
-  function fillLockedField(text) {
-    if (!lockedField) {
-      console.warn('⚠️ No hay campo bloqueado');
-      return;
-    }
-    
-    console.log('✍️ Rellenando campo bloqueado con:', text);
-    
-    // ========== ACUMULACIÓN DE TEXTO ==========
-    const currentValue = lockedField.value || '';
-    
-    // Si el campo ya tiene contenido, agregar un espacio antes del nuevo texto
-    const separator = currentValue.trim() ? ' ' : '';
-    const newValue = currentValue + separator + text;
-    
-    lockedField.value = newValue;
-    
-    // Colocar el cursor al final
-    lockedField.setSelectionRange(newValue.length, newValue.length);
-    
-    // Disparar evento input para que se detecten cambios
-    lockedField.dispatchEvent(new Event('input', { bubbles: true }));
-    
-    console.log('✅ Campo actualizado. Valor completo:', newValue);
-    
-    // Actualizar el status con el nombre del campo
-    const fieldName = lockedField.id 
-      ? document.querySelector(`label[for="${lockedField.id}"] span`)?.textContent || lockedField.placeholder || lockedField.id
-      : lockedField.placeholder || 'campo activo';
-    
-    showStatus(`📝 Dictando en: ${fieldName}`, 'recording');
-  }
-
-  // ========== FUNCIÓN ORIGINAL: autoCompleteForm (sin cambios significativos) ==========
-  function autoCompleteForm(text) {
-    console.log('🔄 Autocompletando formulario con:', text);
-    
-    const textLower = text.toLowerCase();
-    
-    let camposCompletados = [];
-    
-    // Días de la semana
-    const diasSemana = ['lunes', 'martes', 'miércoles', 'miercoles', 'jueves', 'viernes'];
-    const diasAbrev = { 
-      'lunes': 'Lun', 
-      'martes': 'Mar', 
-      'miércoles': 'Mié', 
-      'miercoles': 'Mié',
-      'jueves': 'Jue', 
-      'viernes': 'Vie' 
-    };
-    
-    let diasDetectados = [];
-    diasSemana.forEach(dia => {
-      if (textLower.includes(dia)) {
-        const checkbox = Array.from(document.querySelectorAll('.dayCheckbox'))
-          .find(cb => cb.value === diasAbrev[dia]);
-        if (checkbox && !checkbox.checked) {
-          checkbox.checked = true;
-          diasDetectados.push(diasAbrev[dia]);
-          console.log('✅ Día marcado:', diasAbrev[dia]);
-        }
-      }
-    });
-    if (diasDetectados.length > 0) camposCompletados.push('días');
-    
-    // Horario
-    const horaPatrones = [
-      /(\d{1,2})\s*(?:de la |a las )?mañana/i,
-      /(\d{1,2})\s*(?:de la |a las )?tarde/i,
-      /(\d{1,2})\s*(?:de la |a las )?noche/i,
-      /(\d{1,2})\s*(?::|y)\s*(\d{2})/i,
-      /(\d{1,2})\s*(?:am|pm)/i,
-      /(\d{1,2})\s+horas/i
-    ];
-    
-    for (let patron of horaPatrones) {
-      const match = textLower.match(patron);
-      if (match) {
-        let hora = parseInt(match[1]);
-        let minutos = match[2] ? parseInt(match[2]) : 0;
-        
-        if (textLower.includes('tarde') && hora < 12 && hora >= 1) {
-          hora += 12;
-        } else if (textLower.includes('noche') && hora < 12) {
-          hora += 12;
-        } else if (textLower.includes('pm') && hora < 12) {
-          hora += 12;
-        } else if (textLower.includes('am') && hora === 12) {
-          hora = 0;
-        }
-        
-        const horaStr = hora.toString().padStart(2, '0') + ':' + minutos.toString().padStart(2, '0');
-        const timeField = document.getElementById('fixedTime');
-        if (!timeField.value || camposCompletados.includes('horario')) {
-          timeField.value = horaStr;
-          camposCompletados.push('horario');
-          console.log('✅ Hora detectada:', horaStr);
-        }
-        break;
-      }
-    }
-    
-    // Profesor
-    const profPatrones = [
-      /(?:profesor|profe|maestro|instructor|con el profesor|con la profesora|con)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i,
-      /(?:clase con|entrena con|instructor)\s+([a-záéíóúñ]+(?:\s+[a-záéíóúñ]+)?)/i
-    ];
-    
-    for (let patron of profPatrones) {
-      const match = text.match(patron);
-      if (match) {
-        let profesor = match[1].trim();
-        profesor = profesor.split(' ')
-          .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
-          .join(' ');
-        const profField = document.getElementById('fixedProf');
-        if (!profField.value || camposCompletados.includes('profesor')) {
-          profField.value = profesor;
-          camposCompletados.push('profesor');
-          console.log('✅ Profesor detectado:', profesor);
-        }
-        break;
-      }
-    }
-    
-    // WhatsApp
-    const phonePatterns = [
-      /(?:\+?595|0)\s*\d{3}\s*\d{3}\s*\d{3}/,
-      /\d{3}\s*\d{3}\s*\d{3}/,
-      /(?:teléfono|telefono|celular|whatsapp|número|numero)\s*(?:es|:)?\s*(\d+(?:\s*\d+)*)/i
-    ];
-    
-    for (let pattern of phonePatterns) {
-      const phoneMatch = text.match(pattern);
-      if (phoneMatch) {
-        const phoneField = document.getElementById('studentPhone');
-        let phone = phoneMatch[0].replace(/\s/g, '');
-        
-        if (!phone.startsWith('+') && !phone.startsWith('0')) {
-          phone = '+595' + phone;
-        }
-        
-        if (!phoneField.value || camposCompletados.includes('telefono')) {
-          phoneField.value = phone;
-          camposCompletados.push('telefono');
-          console.log('✅ Teléfono detectado:', phone);
-        }
-        break;
-      }
-    }
-    
-    // Fechas
-    const fechaPatrones = [
-      /(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:del?\s+)?(\d{4}))?/i,
-      /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
-      /(\d{4})-(\d{1,2})-(\d{1,2})/
-    ];
-    
-    const meses = {
-      'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-      'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-      'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-    };
-    
-    for (let patron of fechaPatrones) {
-      const match = textLower.match(patron);
-      if (match) {
-        let fechaStr = '';
-        
-        if (patron.source.includes('enero|febrero')) {
-          const dia = match[1].padStart(2, '0');
-          const mes = meses[match[2].toLowerCase()];
-          const año = match[3] || new Date().getFullYear();
-          fechaStr = `${año}-${mes}-${dia}`;
-        } else if (patron.source.includes('\\/')) {
-          fechaStr = `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-        } else {
-          fechaStr = match[0];
-        }
-        
-        if (textLower.includes('inicio') || textLower.includes('empieza') || textLower.includes('comienza')) {
-          const startField = document.getElementById('startDate');
-          if (!startField.value || camposCompletados.includes('fecha_inicio')) {
-            startField.value = fechaStr;
-            camposCompletados.push('fecha_inicio');
-            console.log('✅ Fecha de inicio detectada:', fechaStr);
-          }
-        } else if (textLower.includes('pago') || textLower.includes('vencimiento') || textLower.includes('vence')) {
-          const dueField = document.getElementById('dueDate');
-          if (!dueField.value || camposCompletados.includes('fecha_pago')) {
-            dueField.value = fechaStr;
-            camposCompletados.push('fecha_pago');
-            console.log('✅ Fecha de pago detectada:', fechaStr);
-          }
-        }
-        break;
-      }
-    }
-    
-    // Nombre
-    const tieneDias = diasDetectados.length > 0;
-    const tieneHora = camposCompletados.includes('horario');
-    const tieneProf = camposCompletados.includes('profesor');
-    const tieneTelefono = camposCompletados.includes('telefono');
-    const tieneFecha = camposCompletados.includes('fecha_inicio') || camposCompletados.includes('fecha_pago');
-    
-    if (!tieneDias && !tieneHora && !tieneProf && !tieneTelefono && !tieneFecha && text.length > 2) {
-      const nameField = document.getElementById('name');
-      
-      let nombreLimpio = text
-        .replace(/(?:se llama|nombre|alumno|alumna|estudiante|es|el|la)\s*/gi, '')
-        .trim();
-      
-      if (nombreLimpio.length > 2) {
-        const nombreCapitalizado = nombreLimpio.split(' ')
-          .map(palabra => {
-            if (palabra.length > 0) {
-              return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
-            }
-            return palabra;
-          })
-          .join(' ');
-        
-        if (!nameField.value) {
-          nameField.value = nombreCapitalizado;
-          camposCompletados.push('nombre');
-          console.log('✅ Nombre detectado:', nombreCapitalizado);
-        } else {
-          nameField.value += ' ' + nombreCapitalizado;
-          console.log('✅ Agregado al nombre:', nombreCapitalizado);
-        }
-      }
-    }
-    
-    // Auto-completar fechas
-    const startDateField = document.getElementById('startDate');
-    const dueDateField = document.getElementById('dueDate');
-    
-    if (camposCompletados.length > 0) {
-      if (!startDateField.value) {
-        const hoy = new Date();
-        startDateField.value = hoy.toISOString().split('T')[0];
-        console.log('✅ Fecha de inicio auto-completada (hoy)');
-      }
-      
-      if (!dueDateField.value) {
-        const hoy = new Date();
-        const proximoMes = new Date(hoy);
-        proximoMes.setMonth(proximoMes.getMonth() + 1);
-        dueDateField.value = proximoMes.toISOString().split('T')[0];
-        console.log('✅ Fecha de pago auto-completada (próximo mes)');
-      }
-    }
-    
-    if (camposCompletados.length > 0) {
-      console.log('📋 Campos completados:', camposCompletados.join(', '));
-    }
-  }
-  
-  console.log('✅ Sistema de reconocimiento de voz continuo con campo bloqueado inicializado');
-}
 
 </script>
 </body>
