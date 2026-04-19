@@ -47,7 +47,7 @@
 
           <label class="block">
             <span class="text-sm">WhatsApp del alumno</span>
-            <input id="studentPhone" type="text" class="mt-1 block w-full border rounded p-2" placeholder="+595..." />
+            <input id="studentPhone" type="text" class="mt-1 block w-full border rounded p-2" placeholder="+595..." value="+595" />
           </label>
 
           <label class="block">
@@ -58,6 +58,11 @@
           <label class="block">
             <span class="text-sm">Fecha de próximo pago</span>
             <input id="dueDate" type="date" class="mt-1 block w-full border rounded p-2" />
+          </label>
+
+          <label class="block">
+            <span class="text-sm">Cumpleaños</span>
+            <input type="date" id="birthday" class="mt-1 block w-full border rounded p-2" />
           </label>
 
           <div>
@@ -98,9 +103,11 @@
           <table class="w-full table-auto">
             <thead class="text-left text-sm text-slate-600">
               <tr>
+                <th class="p-2">#</th>
                 <th class="p-2">Nombre</th>
                 <th class="p-2">Días / Hora / Profe</th>
                 <th class="p-2">Próx. pago</th>
+                <th class="p-2">Cumpleaños</th>
                 <th class="p-2">Estado</th>
                 <th class="p-2">WhatsApp</th>
                 <th class="p-2">Acciones</th>
@@ -168,9 +175,10 @@ window.deleteStudentFirebase = deleteStudentFirebase;
 window.editStudent = function (s) {
   document.getElementById("studentId").value = s.id;
   document.getElementById("name").value = s.name || "";
-  document.getElementById("studentPhone").value = s.studentPhone || "";
+  document.getElementById("studentPhone").value = s.studentPhone || "+595";
   document.getElementById("startDate").value = s.startDate || "";
   document.getElementById("dueDate").value = s.dueDate || "";
+  document.getElementById("birthday").value = s.birthday || "";
   document.getElementById("fixedTime").value = s.time || "";
   document.getElementById("fixedProf").value = s.prof || "";
   document.querySelectorAll(".dayCheckbox").forEach(cb => {
@@ -299,7 +307,7 @@ function render(students) {
 
   const filteredStudents = advancedSearch(students, search);
 
-  filteredStudents.forEach(s => {
+  filteredStudents.forEach((s, index) => {
     const classStr = (s.days || []).map(d => `${d} ${s.time} (${s.prof})`).join('<br/>');
     const waLink = s.studentPhone ? 
       `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
@@ -311,9 +319,11 @@ function render(students) {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td class="p-2 align-top text-slate-500 font-medium">${index + 1}.</td>
       <td class="p-2 align-top">${s.name}</td>
       <td class="p-2 align-top">${classStr}</td>
       <td class="p-2 align-top">${formatDateDDMMYYYY(s.dueDate)}</td>
+      <td class="p-2 align-top">${formatDateDDMMYYYY(s.birthday)}</td>
       <td class="p-2 align-top">
         ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
           s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
@@ -344,6 +354,7 @@ function render(students) {
 
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
+  const CLASS_LIMIT = 13;
   const container = document.getElementById('scheduleContainer');
   container.innerHTML = '';
   const gridMap = {};
@@ -365,7 +376,7 @@ function renderScheduleGrid(students) {
       <thead class="bg-gray-200">
         <tr>
           <th class="border p-1">Alumno</th>
-          ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/9)</span></th>`).join('')}
+          ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/${CLASS_LIMIT})</span></th>`).join('')}
         </tr>
       </thead>`;
     const tbodyEl = document.createElement('tbody');
@@ -376,7 +387,7 @@ function renderScheduleGrid(students) {
         ${days.map(d=>{
           const hasClass = (s.days||[]).includes(d);
           let bgColor = hasClass ? 'bg-green-200' : '';
-          if(dayCounts[d]>=9) bgColor='bg-red-400 text-white';
+          if(dayCounts[d]>=CLASS_LIMIT) bgColor='bg-red-400 text-white';
           return `<td class="border p-1 text-xs ${bgColor}">${hasClass?s.name:''}</td>`;
         }).join('')}
       `;
@@ -411,13 +422,57 @@ function renderSummaryByProfessor(students) {
     const profBlock = document.createElement("div");
     profBlock.className = "mb-4";
     
-    const alDiaList = document.createElement("ul");
-    alDiaList.className = "list-disc ml-5 space-y-1";
+    const alDiaList = document.createElement("ol");
+    alDiaList.className = "list-decimal ml-5 space-y-1";
+
+    let itemCounter = 1;
     
     alDia.forEach(s => {
       const li = document.createElement("li");
-      li.textContent = s.name;
+      
+      const nameSpan = document.createTextNode(s.name + " — ");
+      li.appendChild(nameSpan);
+
+      const btn = document.createElement("button");
+      btn.className = "underline hover:text-blue-700 cursor-pointer bg-transparent border-none p-0 text-blue-600";
+      btn.textContent = "Revisar";
+      btn.title = "Buscar automáticamente este alumno";
+
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const studentName = s.name;
+        console.log('🔍 Revisar clickeado para:', studentName);
+
+        const searchField = document.getElementById('search');
+        searchField.value = studentName;
+
+        console.log('📝 Campo de búsqueda actualizado a:', searchField.value);
+
+        render(allStudents);
+
+        console.log('✅ Render ejecutado');
+
+        setTimeout(() => {
+          const tableWrap = document.getElementById('tableWrap');
+          if (tableWrap) {
+            console.log('📜 Haciendo scroll a la tabla');
+            tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+
+        searchField.classList.add('ring-2', 'ring-blue-500');
+        setTimeout(() => {
+          searchField.classList.remove('ring-2', 'ring-blue-500');
+        }, 2000);
+
+        searchField.focus();
+      });
+
+      li.appendChild(btn);
       alDiaList.appendChild(li);
+      itemCounter++;
     });
     
     vencidos.forEach(s => {
@@ -429,7 +484,7 @@ function renderSummaryByProfessor(students) {
       
       const btn = document.createElement("button");
       btn.className = "underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0";
-      btn.textContent = "Ver pago";
+      btn.textContent = "Revisar";
       btn.title = "Buscar automáticamente este alumno";
       
       btn.addEventListener('click', function(e) {
@@ -437,19 +492,17 @@ function renderSummaryByProfessor(students) {
         e.stopPropagation();
         
         const studentName = s.name;
-        console.log('🔍 Ver pago clickeado para:', studentName);
+        console.log('🔍 Revisar clickeado para:', studentName);
         
         const searchField = document.getElementById('search');
         searchField.value = studentName;
         
         console.log('📝 Campo de búsqueda actualizado a:', searchField.value);
         
-        // Forzar re-render inmediatamente
         render(allStudents);
         
         console.log('✅ Render ejecutado');
         
-        // Scroll a la tabla
         setTimeout(() => {
           const tableWrap = document.getElementById('tableWrap');
           if (tableWrap) {
@@ -458,7 +511,6 @@ function renderSummaryByProfessor(students) {
           }
         }, 100);
         
-        // Efecto visual
         searchField.classList.add('ring-2', 'ring-blue-500');
         setTimeout(() => {
           searchField.classList.remove('ring-2', 'ring-blue-500');
@@ -469,6 +521,7 @@ function renderSummaryByProfessor(students) {
       
       li.appendChild(btn);
       alDiaList.appendChild(li);
+      itemCounter++;
     });
     
     const title = document.createElement("h4");
@@ -497,6 +550,7 @@ document.getElementById("studentForm").addEventListener("submit", async ev=>{
     studentPhone: document.getElementById('studentPhone').value.trim(),
     startDate: document.getElementById('startDate').value,
     dueDate: document.getElementById('dueDate').value,
+    birthday: document.getElementById('birthday').value,
     days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c=>c.value),
     time: document.getElementById('fixedTime').value,
     prof: document.getElementById('fixedProf').value.trim()
@@ -504,11 +558,13 @@ document.getElementById("studentForm").addEventListener("submit", async ev=>{
   await saveStudent(student);
   ev.target.reset();
   document.getElementById('studentId').value='';
+  document.getElementById('studentPhone').value='+595';
 });
 
 document.getElementById('clearBtn').addEventListener('click', ()=>{
   document.getElementById('studentForm').reset();
   document.getElementById('studentId').value='';
+  document.getElementById('studentPhone').value='+595';
 });
 
 document.getElementById('search').addEventListener('input', ()=>render(allStudents));
