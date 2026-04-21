@@ -27,6 +27,8 @@
 </head>
 <body class="text-slate-800">
   <div id="bg-overlay"></div>
+
+  <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-base shadow-lg"></div>
   
   <div class="max-w-7xl mx-auto p-6">
     <header class="mb-6 text-white drop-shadow-md">
@@ -416,6 +418,15 @@ function renderSummaryByProfessor(students) {
 
   Object.keys(profMap).forEach(prof => {
     const list = Array.from(profMap[prof].values());
+
+    // Ordenar por dueDate: más próximo primero, sin fecha al final
+    list.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+
     const alDia = list.filter(s => s.dueDate && s.dueDate >= hoy);
     const vencidos = list.filter(s => !s.dueDate || s.dueDate < hoy);
 
@@ -430,7 +441,7 @@ function renderSummaryByProfessor(students) {
     alDia.forEach(s => {
       const li = document.createElement("li");
       
-      const nameSpan = document.createTextNode(s.name + " — ");
+      const nameSpan = document.createTextNode(s.name + " — " + formatDateDDMMYYYY(s.dueDate) + " — ");
       li.appendChild(nameSpan);
 
       const btn = document.createElement("button");
@@ -479,7 +490,7 @@ function renderSummaryByProfessor(students) {
       const li = document.createElement("li");
       li.className = "text-red-600";
       
-      const text = document.createTextNode(s.name + " — ");
+      const text = document.createTextNode(s.name + " — " + formatDateDDMMYYYY(s.dueDate) + " — ");
       li.appendChild(text);
       
       const btn = document.createElement("button");
@@ -534,12 +545,38 @@ function renderSummaryByProfessor(students) {
   });
 }
 
+function checkBirthdaysTomorrow(students) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowMD = `${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+  const birthdayKids = students.filter(s => {
+    if (!s.birthday) return false;
+    const parts = s.birthday.split('-');
+    if (parts.length < 3) return false;
+    const md = `${parts[1]}-${parts[2]}`;
+    return md === tomorrowMD;
+  });
+
+  const banner = document.getElementById('birthdayBanner');
+  if (birthdayKids.length === 0) {
+    banner.classList.add('hidden');
+    banner.textContent = '';
+    return;
+  }
+
+  const names = birthdayKids.map(s => s.name).join(', ');
+  banner.textContent = `🎂🎉 ¡Mañana es el cumpleaños de: ${names}! 🎉🎂`;
+  banner.classList.remove('hidden');
+}
+
 onSnapshot(studentsCol, snapshot=>{
   allStudents.length=0;
   snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
   render(allStudents);
   renderScheduleGrid(allStudents);
   renderSummaryByProfessor(allStudents);
+  checkBirthdaysTomorrow(allStudents);
 });
 
 document.getElementById("studentForm").addEventListener("submit", async ev=>{
