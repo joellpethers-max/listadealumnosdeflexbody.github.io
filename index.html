@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <!-- Soporte WebApp para iOS (iPhone / iPad) y Android -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Flex Body" />
   <title>Lista de Alumnos del Equipo Flex Body</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -11,99 +15,145 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      background-attachment: fixed;
       position: relative;
       min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
     }
     #bg-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.35);
       backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
       z-index: 0;
       pointer-events: none;
     }
     .max-w-7xl { position: relative; z-index: 1; }
+    
+    /* Evita el auto-zoom en Safari iOS al tocar inputs */
+    @media screen and (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
+    /* Scroll suave en tablas para iOS */
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+    }
   </style>
 </head>
 <body class="text-slate-800">
   <div id="bg-overlay"></div>
 
-  <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-base shadow-lg"></div>
+  <!-- Banner de Cumpleaños (Hoy y Mañana) -->
+  <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-sm md:text-base shadow-lg"></div>
   
-  <div class="max-w-7xl mx-auto p-6">
-    <header class="mb-6 text-white drop-shadow-md">
-      <h1 class="text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
-      <p class="text-sm text-slate-100">Registro de alumnos, horarios fijos, días de la semana, profes y pagos.</p>
+  <div class="max-w-7xl mx-auto p-4 md:p-6">
+    <!-- Encabezado y Barra de Sesión / Privacidad -->
+    <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-white drop-shadow-md">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
+        <p class="text-xs md:text-sm text-slate-100">Registro de alumnos, horarios fijos, días de la semana, profes y pagos.</p>
+      </div>
+
+      <!-- Panel de Usuario (Login con Google) -->
+      <div class="bg-black/40 backdrop-blur-md p-3 rounded-lg flex flex-wrap items-center gap-3 border border-white/20 self-start md:self-auto">
+        <div id="authStatus" class="text-xs md:text-sm">
+          <span class="text-yellow-300 font-semibold">Modo Lectura</span> (Sin sesión)
+        </div>
+        <button id="loginBtn" class="bg-white text-slate-800 hover:bg-slate-100 font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition flex items-center gap-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+          </svg>
+          Iniciar sesión
+        </button>
+        <button id="logoutBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
+          Salir
+        </button>
+      </div>
     </header>
 
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="md:col-span-1 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
-        <h2 class="font-semibold mb-2">Agregar / editar alumno</h2>
+    <section id="mainGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Formulario (Solo visible para joellpethers@gmail.com) -->
+      <div id="adminFormPanel" class="hidden lg:col-span-1 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow h-fit">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-semibold text-lg">Agregar / editar alumno</h2>
+          <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-semibold">Admin</span>
+        </div>
         <form id="studentForm" class="space-y-3">
           <input type="hidden" id="studentId" />
 
           <label class="block">
-            <span class="text-sm">Nombre completo</span>
+            <span class="text-sm font-medium">Nombre completo</span>
             <input id="name" class="mt-1 block w-full border rounded p-2" required />
           </label>
 
           <label class="block">
-            <span class="text-sm">WhatsApp del alumno</span>
-            <input id="studentPhone" type="text" class="mt-1 block w-full border rounded p-2" placeholder="+595..." value="+595" />
+            <span class="text-sm font-medium">WhatsApp del alumno</span>
+            <input id="studentPhone" type="tel" class="mt-1 block w-full border rounded p-2" placeholder="+595..." value="+595" />
           </label>
 
-          <label class="block">
-            <span class="text-sm">Fecha de inicio</span>
-            <input id="startDate" type="date" class="mt-1 block w-full border rounded p-2" />
-          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+            <label class="block">
+              <span class="text-sm font-medium">Fecha de inicio</span>
+              <input id="startDate" type="date" class="mt-1 block w-full border rounded p-2" />
+            </label>
 
-          <label class="block">
-            <span class="text-sm">Fecha de próximo pago</span>
-            <input id="dueDate" type="date" class="mt-1 block w-full border rounded p-2" />
-          </label>
+            <label class="block">
+              <span class="text-sm font-medium">Fecha de próximo pago</span>
+              <input id="dueDate" type="date" class="mt-1 block w-full border rounded p-2" />
+            </label>
 
-          <label class="block">
-            <span class="text-sm">Cumpleaños</span>
-            <input type="date" id="birthday" class="mt-1 block w-full border rounded p-2" />
-          </label>
+            <label class="block">
+              <span class="text-sm font-medium">Cumpleaños</span>
+              <input type="date" id="birthday" class="mt-1 block w-full border rounded p-2" />
+            </label>
+          </div>
 
           <div>
             <span class="text-sm font-semibold">Días de clase</span>
-            <div class="flex flex-wrap gap-2 mt-2">
-              <label class="inline-flex items-center"><input type="checkbox" value="Lun" class="dayCheckbox mr-2"/>Lun</label>
-              <label class="inline-flex items-center"><input type="checkbox" value="Mar" class="dayCheckbox mr-2"/>Mar</label>
-              <label class="inline-flex items-center"><input type="checkbox" value="Mié" class="dayCheckbox mr-2"/>Mié</label>
-              <label class="inline-flex items-center"><input type="checkbox" value="Jue" class="dayCheckbox mr-2"/>Jue</label>
-              <label class="inline-flex items-center"><input type="checkbox" value="Vie" class="dayCheckbox mr-2"/>Vie</label>
+            <div class="flex flex-wrap gap-3 mt-2">
+              <label class="inline-flex items-center bg-slate-100 px-2.5 py-1 rounded cursor-pointer"><input type="checkbox" value="Lun" class="dayCheckbox mr-1.5"/>Lun</label>
+              <label class="inline-flex items-center bg-slate-100 px-2.5 py-1 rounded cursor-pointer"><input type="checkbox" value="Mar" class="dayCheckbox mr-1.5"/>Mar</label>
+              <label class="inline-flex items-center bg-slate-100 px-2.5 py-1 rounded cursor-pointer"><input type="checkbox" value="Mié" class="dayCheckbox mr-1.5"/>Mié</label>
+              <label class="inline-flex items-center bg-slate-100 px-2.5 py-1 rounded cursor-pointer"><input type="checkbox" value="Jue" class="dayCheckbox mr-1.5"/>Jue</label>
+              <label class="inline-flex items-center bg-slate-100 px-2.5 py-1 rounded cursor-pointer"><input type="checkbox" value="Vie" class="dayCheckbox mr-1.5"/>Vie</label>
             </div>
           </div>
 
-          <label class="block mt-2">
-            <span class="text-sm">Horario fijo</span>
-            <input type="time" id="fixedTime" class="mt-1 block w-full border rounded p-2" />
-          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+            <label class="block">
+              <span class="text-sm font-medium">Horario fijo</span>
+              <input type="time" id="fixedTime" class="mt-1 block w-full border rounded p-2" />
+            </label>
 
-          <label class="block mt-2">
-            <span class="text-sm">Profesor</span>
-            <input type="text" id="fixedProf" class="mt-1 block w-full border rounded p-2" placeholder="Nombre del profe" />
-          </label>
+            <label class="block">
+              <span class="text-sm font-medium">Profesor</span>
+              <input type="text" id="fixedProf" class="mt-1 block w-full border rounded p-2" placeholder="Nombre del profe" />
+            </label>
+          </div>
 
-          <div class="flex gap-2 mt-4">
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
-            <button type="button" id="clearBtn" class="border px-4 py-2 rounded">Limpiar</button>
+          <div class="flex gap-2 pt-2">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium flex-1">Guardar</button>
+            <button type="button" id="clearBtn" class="border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2 rounded">Limpiar</button>
           </div>
         </form>
       </div>
 
-      <div class="md:col-span-2 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="font-semibold">Alumnos registrados</h2>
-          <input id="search" placeholder="Buscar por nombre, fecha o estado" class="border p-2 rounded" />
+      <!-- Panel Principal de Tablas (Ocupa todo el ancho si no es admin) -->
+      <div id="tablesPanel" class="lg:col-span-3 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+          <h2 class="font-semibold text-lg">Alumnos registrados</h2>
+          <input id="search" placeholder="Buscar por nombre, profe, fecha o estado..." class="border p-2 rounded w-full sm:w-72" />
         </div>
 
-        <div id="tableWrap" class="overflow-x-auto">
-          <table class="w-full table-auto">
-            <thead class="text-left text-sm text-slate-600">
+        <div id="tableWrap" class="overflow-x-auto border rounded-lg">
+          <table class="w-full table-auto border-collapse">
+            <thead class="text-left text-xs md:text-sm text-slate-700 bg-slate-100 border-b">
               <tr>
                 <th class="p-2">#</th>
                 <th class="p-2">Nombre</th>
@@ -111,33 +161,46 @@
                 <th class="p-2">Próx. pago</th>
                 <th class="p-2">Cumpleaños</th>
                 <th class="p-2">Estado</th>
-                <th class="p-2">WhatsApp</th>
-                <th class="p-2">Acciones</th>
+                <th class="p-2 text-center">WhatsApp</th>
+                <th id="mainTableActionsHeader" class="p-2 text-center hidden">Acciones</th>
               </tr>
             </thead>
-            <tbody id="studentsTbody" class="text-sm"></tbody>
+            <tbody id="studentsTbody" class="text-xs md:text-sm divide-y divide-slate-200"></tbody>
           </table>
         </div>
 
-        <div class="mt-6">
-          <h3 class="font-semibold">Cuadrícula semanal de asistencia por profesor y hora</h3>
+        <!-- Cuadrícula semanal / Tablillas -->
+        <div class="mt-8">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h3 class="font-semibold text-lg">Cuadrícula semanal de asistencia por profesor y hora</h3>
+            <div class="flex flex-wrap gap-3 text-xs">
+              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-green-200 border inline-block"></span> Al día</span>
+              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-yellow-300 border inline-block"></span> Alumno Vencido</span>
+              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-red-400 border inline-block"></span> Cupo lleno (13)</span>
+            </div>
+          </div>
           <div class="overflow-x-auto" id="scheduleContainer"></div>
         </div>
 
-        <div class="mt-8 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow" id="summaryContainer">
-          <h3 class="font-semibold mb-2">Resumen por profesor (alumnos al día / aviso de pago)</h3>
+        <!-- Resumen por profesor -->
+        <div class="mt-8 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow border" id="summaryContainer">
+          <h3 class="font-semibold mb-2 text-base">Resumen por profesor (alumnos al día / aviso de pago)</h3>
           <div id="summaryContent" class="text-sm"></div>
         </div>
       </div>
     </section>
 
-    <footer class="mt-6 text-xs text-slate-100 drop-shadow">Ahora conectado a Firebase Firestore.</footer>
+    <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
+      Conectado a Firebase Firestore • Optimizado para iOS, Android y PC.
+    </footer>
   </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } 
+  from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfPoyEFqZzvhmGLTKLLOZ9R2xr6n14_08",
@@ -151,16 +214,127 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 const studentsCol = collection(db, "students");
+
+// Correo exclusivo con permisos de edición y eliminación
+const ADMIN_EMAIL = "joellpethers@gmail.com";
+let currentUserEmail = null;
 const allStudents = [];
+
+function isAdmin() {
+  return currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
+// ==========================================
+// 1. CORRECCIÓN DE ZONA HORARIA LOCAL (NO UTC)
+// ==========================================
+function getLocalTodayStr() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function formatDateDDMMYYYY(dateStr) {
   if (!dateStr) return '-';
-  const [year, month, day] = dateStr.split('-');
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const [year, month, day] = parts;
   return `${day}/${month}/${year}`;
 }
 
+function addOneMonthLocal(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  let targetYear = year;
+  let targetMonth = month + 1;
+  if (targetMonth > 12) {
+    targetMonth = 1;
+    targetYear += 1;
+  }
+  // Obtener el último día del mes siguiente por si era 31 de enero -> 28/29 de febrero
+  const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+  const targetDay = Math.min(day, daysInTargetMonth);
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+}
+
+// ==========================================
+// 2. AUTENTICACIÓN Y CONTROL DE PRIVACIDAD
+// ==========================================
+getRedirectResult(auth).catch(err => console.error("Error en redirect login:", err));
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    // Fallback para iOS Safari si bloquea popups
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, provider);
+    } else {
+      console.error("Error al iniciar sesión:", err);
+      alert("No se pudo iniciar sesión. Verifica que el inicio con Google esté habilitado en Firebase Authentication.");
+    }
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await signOut(auth);
+});
+
+function updateAdminUI() {
+  const adminPanel = document.getElementById('adminFormPanel');
+  const tablesPanel = document.getElementById('tablesPanel');
+  const actionsHeader = document.getElementById('mainTableActionsHeader');
+  const authStatus = document.getElementById('authStatus');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  if (currentUserEmail) {
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+
+    if (isAdmin()) {
+      authStatus.innerHTML = `<span class="text-green-400 font-bold">● Admin:</span> ${currentUserEmail}`;
+      adminPanel.classList.remove('hidden');
+      tablesPanel.classList.remove('lg:col-span-3');
+      tablesPanel.classList.add('lg:col-span-2');
+      actionsHeader.classList.remove('hidden');
+    } else {
+      authStatus.innerHTML = `<span class="text-yellow-300 font-bold">● Solo Lectura:</span> ${currentUserEmail}`;
+      adminPanel.classList.add('hidden');
+      tablesPanel.classList.remove('lg:col-span-2');
+      tablesPanel.classList.add('lg:col-span-3');
+      actionsHeader.classList.add('hidden');
+    }
+  } else {
+    loginBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+    authStatus.innerHTML = `<span class="text-yellow-300 font-semibold">Modo Solo Lectura</span> (Inicia sesión para administrar)`;
+    adminPanel.classList.add('hidden');
+    tablesPanel.classList.remove('lg:col-span-2');
+    tablesPanel.classList.add('lg:col-span-3');
+    actionsHeader.classList.add('hidden');
+  }
+
+  render(allStudents);
+  renderScheduleGrid(allStudents);
+}
+
+onAuthStateChanged(auth, (user) => {
+  currentUserEmail = user ? user.email : null;
+  updateAdminUI();
+});
+
+// ==========================================
+// 3. OPERACIONES ABM (PROTEGIDAS SOLO ADMIN)
+// ==========================================
 async function saveStudent(student) {
+  if (!isAdmin()) {
+    alert("Acceso denegado: Solo el administrador puede guardar cambios.");
+    return;
+  }
   const data = { ...student };
   delete data.id;
   if (student.id) await updateDoc(doc(db, "students", student.id), data);
@@ -168,13 +342,25 @@ async function saveStudent(student) {
 }
 
 async function deleteStudentFirebase(id) {
+  if (!isAdmin()) {
+    alert("Acceso denegado: Solo joellpethers@gmail.com puede eliminar alumnos.");
+    return;
+  }
   if (!id) return;
-  if (!confirm("¿Seguro quieres eliminar este alumno?")) return;
+  const student = allStudents.find(s => s.id === id);
+  const nombre = student ? student.name : "este alumno";
+  if (!confirm(`¿Seguro quieres eliminar a ${nombre}?`)) return;
   await deleteDoc(doc(db, "students", id));
 }
-window.deleteStudentFirebase = deleteStudentFirebase;
 
-window.editStudent = function (s) {
+function editStudentById(id) {
+  if (!isAdmin()) {
+    alert("Acceso denegado: Solo joellpethers@gmail.com puede editar alumnos.");
+    return;
+  }
+  const s = allStudents.find(item => item.id === id);
+  if (!s) return;
+
   document.getElementById("studentId").value = s.id;
   document.getElementById("name").value = s.name || "";
   document.getElementById("studentPhone").value = s.studentPhone || "+595";
@@ -186,20 +372,43 @@ window.editStudent = function (s) {
   document.querySelectorAll(".dayCheckbox").forEach(cb => {
     cb.checked = (s.days || []).includes(cb.value);
   });
-  document.getElementById('studentForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
+  document.getElementById('adminFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
-window.renewStudent = async function(id, currentDate) {
-  if (!id || !currentDate) return;
-  const fecha = new Date(currentDate);
-  const diaOriginal = fecha.getDate();
-  fecha.setMonth(fecha.getMonth() + 1);
-  if (fecha.getDate() !== diaOriginal) fecha.setDate(0);
-  const nuevaStr = fecha.toISOString().split("T")[0];
+async function renewStudent(id, currentDate) {
+  if (!isAdmin()) {
+    alert("Acceso denegado: Solo joellpethers@gmail.com puede renovar pagos.");
+    return;
+  }
+  if (!id) return;
+  const baseDate = currentDate || getLocalTodayStr();
+  const nuevaStr = addOneMonthLocal(baseDate);
   await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
-  alert(`Fecha de próximo pago renovada: ${formatDateDDMMYYYY(nuevaStr)}`);
-};
+  alert(`Fecha de próximo pago renovada al: ${formatDateDDMMYYYY(nuevaStr)}`);
+}
 
+// Delegación global de eventos para botones Editar, Renovar y Eliminar (tanto en tabla general como en tablillas)
+document.addEventListener('click', (ev) => {
+  const editBtn = ev.target.closest('.edit-btn');
+  if (editBtn) {
+    editStudentById(editBtn.dataset.id);
+    return;
+  }
+  const renewBtn = ev.target.closest('.renew-btn');
+  if (renewBtn) {
+    renewStudent(renewBtn.dataset.id, renewBtn.dataset.date);
+    return;
+  }
+  const deleteBtn = ev.target.closest('.delete-btn');
+  if (deleteBtn) {
+    deleteStudentFirebase(deleteBtn.dataset.id);
+    return;
+  }
+});
+
+// ==========================================
+// 4. BÚSQUEDA AVANZADA Y RENDER PRINCIPAL
+// ==========================================
 function normalizeText(text) {
   if (!text) return '';
   return text.toString().toLowerCase()
@@ -209,7 +418,7 @@ function normalizeText(text) {
 
 function getStudentStatus(dueDate) {
   if (!dueDate) return 'sin fecha';
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = getLocalTodayStr();
   if (dueDate < hoy) return 'vencido';
   if (dueDate === hoy) return 'vence hoy';
   return 'al dia';
@@ -219,54 +428,31 @@ function advancedSearch(students, searchTerm) {
   if (!searchTerm || !searchTerm.trim()) return students;
   
   const normalizedSearch = normalizeText(searchTerm);
-  const searchLower = searchTerm.toLowerCase().trim();
-  
-  console.log('🔎 Buscando:', searchTerm, '| Normalizado:', normalizedSearch);
-  
-  // Si la búsqueda es muy corta (1-2 caracteres), requerir coincidencia más estricta
   const isShortSearch = normalizedSearch.length <= 2;
   
-  const filtered = students.filter(s => {
+  return students.filter(s => {
     const nombreNormalizado = normalizeText(s.name);
+    let nombreMatch = isShortSearch
+      ? nombreNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch))
+      : nombreNormalizado.includes(normalizedSearch);
     
-    // Para búsquedas cortas, buscar palabras que EMPIECEN con la búsqueda
-    let nombreMatch;
-    if (isShortSearch) {
-      const palabrasNombre = nombreNormalizado.split(/\s+/);
-      nombreMatch = palabrasNombre.some(palabra => palabra.startsWith(normalizedSearch));
-    } else {
-      nombreMatch = nombreNormalizado.includes(normalizedSearch);
-    }
-    
-    // Búsqueda en profesor
     const profNormalizado = normalizeText(s.prof || '');
-    let profMatch;
-    if (isShortSearch) {
-      const palabrasProf = profNormalizado.split(/\s+/);
-      profMatch = palabrasProf.some(palabra => palabra.startsWith(normalizedSearch));
-    } else {
-      profMatch = profNormalizado.includes(normalizedSearch);
-    }
+    let profMatch = isShortSearch
+      ? profNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch))
+      : profNormalizado.includes(normalizedSearch);
     
-    // Búsqueda en días (Lun, Mar, Mié, Jue, Vie)
     const diasNormalizados = (s.days || []).map(d => normalizeText(d));
     const diasMatch = diasNormalizados.some(dia => dia.startsWith(normalizedSearch));
-    
-    // Búsqueda en horario (formato HH:MM)
     const horarioMatch = (s.time || '').includes(searchTerm.trim());
-    
-    // Búsqueda en fecha de pago (formato DD/MM/YYYY)
     const fechaPagoFormatted = formatDateDDMMYYYY(s.dueDate);
     const fechaMatch = fechaPagoFormatted.includes(searchTerm.trim());
     
-    // Búsqueda en estado (al día, vencido, vence hoy)
     const estado = getStudentStatus(s.dueDate);
     const estadoNormalizado = normalizeText(estado);
     const estadoMatch = estadoNormalizado.startsWith(normalizedSearch) || estadoNormalizado.includes(normalizedSearch);
     
-    // Keywords de estado
     const estadoKeywords = {
-      'vencido': ['vencido', 'atrasado', 'debe', 'pendiente', 'rojo'],
+      'vencido': ['vencido', 'atrasado', 'debe', 'pendiente', 'rojo', 'amarillo'],
       'vence hoy': ['hoy', 'vence hoy', 'naranja'],
       'al dia': ['al dia', 'pagado', 'verde', 'corriente', 'aldia']
     };
@@ -280,146 +466,212 @@ function advancedSearch(students, searchTerm) {
       }
     });
     
-    // Búsqueda en teléfono/WhatsApp
-    const phoneMatch = searchTerm.replace(/\D/g, '').length >= 3 && 
-                       (s.studentPhone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
+    const phoneDigits = searchTerm.replace(/\D/g, '');
+    const phoneMatch = phoneDigits.length >= 3 && 
+                       (s.studentPhone || '').replace(/\D/g, '').includes(phoneDigits);
     
-    const match = nombreMatch || profMatch || diasMatch || horarioMatch || 
+    return nombreMatch || profMatch || diasMatch || horarioMatch || 
            fechaMatch || estadoMatch || estadoKeywordMatch || phoneMatch;
-    
-    if (match) {
-      console.log('✅ Match encontrado:', s.name);
-    }
-    
-    return match;
   });
-  
-  console.log('📊 Total filtrados:', filtered.length, 'de', students.length);
-  
-  return filtered;
 }
 
 function render(students) {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '';
   const search = document.getElementById('search').value;
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = getLocalTodayStr();
+  const adminMode = isAdmin();
 
-  students.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
-
+  students.sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
   const filteredStudents = advancedSearch(students, search);
 
   filteredStudents.forEach((s, index) => {
-    const classStr = (s.days || []).map(d => `${d} ${s.time} (${s.prof})`).join('<br/>');
+    const classStr = (s.days || []).map(d => `${d} ${s.time || ''} (${s.prof || '-'})`).join('<br/>');
     const waLink = s.studentPhone ? 
       `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
         'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
       )}` : '#';
 
-    const extraBtns = s.dueDate && s.dueDate < hoy ? 
-      `<button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs ml-1 renew-btn" data-id="${s.id}" data-date="${s.dueDate}">Renovar</button>` : "";
+    const isVencido = s.dueDate && s.dueDate < hoy;
+    const isHoy = s.dueDate === hoy;
+
+    let estadoBadge = '<span class="text-green-600 font-semibold">Al día</span>';
+    if (!s.dueDate) estadoBadge = '<span class="text-slate-400">Sin fecha</span>';
+    else if (isVencido) estadoBadge = '<span class="text-red-600 font-semibold">Vencido</span>';
+    else if (isHoy) estadoBadge = '<span class="text-orange-500 font-semibold">Vence hoy</span>';
 
     const tr = document.createElement('tr');
+    tr.className = isVencido ? 'bg-yellow-50/70 hover:bg-yellow-100/80' : 'hover:bg-slate-50';
+
+    let actionsCell = '';
+    if (adminMode) {
+      actionsCell = `
+        <td class="p-2 align-top text-center whitespace-nowrap">
+          <div class="flex items-center justify-center gap-1">
+            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs edit-btn" data-id="${s.id}">Editar</button>
+            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}">Renovar</button>
+            <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs delete-btn" data-id="${s.id}">Eliminar</button>
+          </div>
+        </td>
+      `;
+    }
+
     tr.innerHTML = `
       <td class="p-2 align-top text-slate-500 font-medium">${index + 1}.</td>
-      <td class="p-2 align-top">${s.name}</td>
-      <td class="p-2 align-top">${classStr}</td>
-      <td class="p-2 align-top">${formatDateDDMMYYYY(s.dueDate)}</td>
-      <td class="p-2 align-top">${formatDateDDMMYYYY(s.birthday)}</td>
-      <td class="p-2 align-top">
-        ${s.dueDate < hoy ? '<span class="text-red-600 font-semibold">Vencido</span>' :
-          s.dueDate === hoy ? '<span class="text-orange-500 font-semibold">Vence hoy</span>' :
-          '<span class="text-green-600 font-semibold">Al día</span>'
-        }
-      </td>
+      <td class="p-2 align-top font-medium">${s.name || '-'}</td>
+      <td class="p-2 align-top">${classStr || '-'}</td>
+      <td class="p-2 align-top whitespace-nowrap">${formatDateDDMMYYYY(s.dueDate)}</td>
+      <td class="p-2 align-top whitespace-nowrap">${formatDateDDMMYYYY(s.birthday)}</td>
+      <td class="p-2 align-top whitespace-nowrap">${estadoBadge}</td>
       <td class="p-2 align-top text-center">
-        <a href="${waLink}" target="_blank" class="bg-green-500 text-white px-2 py-1 rounded text-xs">Notificar</a>
+        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2.5 py-1 rounded text-xs">Notificar</a>
       </td>
-      <td class="p-2 align-top text-center">
-        <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs" onclick='editStudent(${JSON.stringify(s)})'>Editar</button>
-        ${extraBtns}
-        <button class="bg-red-500 text-white px-2 py-1 rounded text-xs ml-1 delete-btn" data-id="${s.id}">Eliminar</button>
-      </td>
+      ${actionsCell}
     `;
     tbody.appendChild(tr);
   });
-
-  tbody.querySelectorAll('.renew-btn').forEach(btn => {
-    btn.addEventListener('click', ev => {
-      renewStudent(ev.currentTarget.dataset.id, ev.currentTarget.dataset.date);
-    });
-  });
-  tbody.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', ev => deleteStudentFirebase(ev.currentTarget.dataset.id));
-  });
 }
 
+// =========================================================
+// 5. TABLILLAS POR PROFESOR Y HORA (CON VENCIMIENTO, COLOR AMARILLO Y BOTONES)
+// =========================================================
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
   const CLASS_LIMIT = 13;
   const container = document.getElementById('scheduleContainer');
   container.innerHTML = '';
+  const hoy = getLocalTodayStr();
+  const adminMode = isAdmin();
+
   const gridMap = {};
   students.forEach(s => {
     if (!s.prof || !s.time) return;
-    const key = `${s.prof}||${s.time}`;
+    const key = `${s.prof.trim()}||${s.time.trim()}`;
     if (!gridMap[key]) gridMap[key] = [];
     gridMap[key].push(s);
   });
-  Object.keys(gridMap).forEach(key => {
+
+  // Ordenar las tablillas alfabéticamente por Profesor y luego cronológicamente por Hora
+  const sortedKeys = Object.keys(gridMap).sort((a, b) => {
+    const [profA, timeA] = a.split("||");
+    const [profB, timeB] = b.split("||");
+    const cmpProf = profA.localeCompare(profB, 'es', { sensitivity: 'base' });
+    if (cmpProf !== 0) return cmpProf;
+    return timeA.localeCompare(timeB);
+  });
+
+  sortedKeys.forEach(key => {
     const [prof, timeBase] = key.split("||");
     let profStudents = gridMap[key];
-    profStudents.sort((a,b)=>a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
-    const table = document.createElement('table');
-    table.className = 'w-full border table-auto text-sm mb-6';
+    profStudents.sort((a,b) => (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' }));
+
     const dayCounts = {};
-    days.forEach(d=>{dayCounts[d]=profStudents.filter(s=>(s.days||[]).includes(d)).length;});
+    days.forEach(d => {
+      dayCounts[d] = profStudents.filter(s => (s.days || []).includes(d)).length;
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mb-6 border rounded-lg overflow-x-auto bg-white shadow-sm';
+
+    const profTitle = document.createElement('div');
+    profTitle.className = 'bg-slate-800 text-white px-3 py-2 font-semibold text-sm flex justify-between items-center';
+    profTitle.innerHTML = `
+      <span>Profesor: ${prof} — Horario: ${timeBase} hs</span>
+      <span class="text-xs bg-slate-700 px-2 py-0.5 rounded">${profStudents.length} alumnos</span>
+    `;
+
+    const table = document.createElement('table');
+    table.className = 'w-full border-collapse table-auto text-xs md:text-sm';
     table.innerHTML = `
-      <thead class="bg-gray-200">
+      <thead class="bg-slate-200 text-slate-700">
         <tr>
-          <th class="border p-1">Alumno</th>
-          ${days.map(d=>`<th class="border p-1">${d} <br><span class="text-xs">(${dayCounts[d]}/${CLASS_LIMIT})</span></th>`).join('')}
+          <th class="border p-2 text-left">Alumno</th>
+          <th class="border p-2 text-center whitespace-nowrap">Vence</th>
+          ${days.map(d => {
+            const isFull = dayCounts[d] >= CLASS_LIMIT;
+            return `<th class="border p-2 text-center ${isFull ? 'bg-red-600 text-white' : ''}">
+              ${d}<br><span class="text-[11px] font-normal">(${dayCounts[d]}/${CLASS_LIMIT})</span>
+            </th>`;
+          }).join('')}
+          ${adminMode ? '<th class="border p-2 text-center">Acciones</th>' : ''}
         </tr>
-      </thead>`;
+      </thead>
+    `;
+
     const tbodyEl = document.createElement('tbody');
-    profStudents.forEach(s=>{
+
+    profStudents.forEach(s => {
+      const isVencido = s.dueDate && s.dueDate < hoy;
       const tr = document.createElement('tr');
+      
+      // Si el alumno está vencido, toda su fila en la tablilla se resalta en amarillo
+      tr.className = isVencido ? 'bg-yellow-200 font-medium' : 'hover:bg-slate-50';
+
+      const daysCells = days.map(d => {
+        const hasClass = (s.days || []).includes(d);
+        let cellColor = '';
+        if (hasClass) {
+          if (dayCounts[d] >= CLASS_LIMIT) {
+            cellColor = 'bg-red-400 text-white font-semibold';
+          } else if (isVencido) {
+            cellColor = 'bg-yellow-300 text-yellow-950 font-semibold';
+          } else {
+            cellColor = 'bg-green-200 text-green-900';
+          }
+        }
+        return `<td class="border p-1.5 text-xs text-center ${cellColor}">${hasClass ? s.name : ''}</td>`;
+      }).join('');
+
+      const actionsCell = adminMode ? `
+        <td class="border p-1.5 text-center whitespace-nowrap">
+          <div class="flex items-center justify-center gap-1">
+            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
+            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[11px] edit-btn" data-id="${s.id}" title="Editar alumno">Editar</button>
+            <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded text-[11px] delete-btn" data-id="${s.id}" title="Eliminar alumno">Eliminar</button>
+          </div>
+        </td>
+      ` : '';
+
       tr.innerHTML = `
-        <td class="border p-1 font-semibold">${s.name}</td>
-        ${days.map(d=>{
-          const hasClass = (s.days||[]).includes(d);
-          let bgColor = hasClass ? 'bg-green-200' : '';
-          if(dayCounts[d]>=CLASS_LIMIT) bgColor='bg-red-400 text-white';
-          return `<td class="border p-1 text-xs ${bgColor}">${hasClass?s.name:''}</td>`;
-        }).join('')}
+        <td class="border p-1.5 font-semibold whitespace-nowrap">
+          ${s.name}
+          ${isVencido ? '<span class="ml-1 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">Vencido</span>' : ''}
+        </td>
+        <td class="border p-1.5 text-center whitespace-nowrap ${isVencido ? 'text-red-700 font-bold' : ''}">
+          ${formatDateDDMMYYYY(s.dueDate)}
+        </td>
+        ${daysCells}
+        ${actionsCell}
       `;
       tbodyEl.appendChild(tr);
     });
+
     table.appendChild(tbodyEl);
-    const profTitle = document.createElement('h4');
-    profTitle.className='font-semibold mt-4 mb-2';
-    profTitle.textContent=`Profesor: ${prof} — Horario: ${timeBase}`;
-    container.appendChild(profTitle);
-    container.appendChild(table);
+    wrapper.appendChild(profTitle);
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
   });
 }
 
+// ==========================================
+// 6. RESUMEN POR PROFESOR
+// ==========================================
 function renderSummaryByProfessor(students) {
-  const hoy = new Date().toISOString().split("T")[0];
+  const hoy = getLocalTodayStr();
   const summaryContainer = document.getElementById("summaryContent");
   summaryContainer.innerHTML = '';
 
   const profMap = {};
   students.forEach(s => {
     if (!s.prof || !s.name) return;
-    if (!profMap[s.prof]) profMap[s.prof] = new Map();
-    if (!profMap[s.prof].has(s.name)) profMap[s.prof].set(s.name, s);
+    const profKey = s.prof.trim();
+    if (!profMap[profKey]) profMap[profKey] = new Map();
+    if (!profMap[profKey].has(s.name)) profMap[profKey].set(s.name, s);
   });
 
-  Object.keys(profMap).forEach(prof => {
+  Object.keys(profMap).sort((a,b) => a.localeCompare(b, 'es', {sensitivity: 'base'})).forEach(prof => {
     const list = Array.from(profMap[prof].values());
 
-    // Ordenar por dueDate: más próximo primero, sin fecha al final
     list.sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0;
       if (!a.dueDate) return 1;
@@ -433,153 +685,108 @@ function renderSummaryByProfessor(students) {
     const profBlock = document.createElement("div");
     profBlock.className = "mb-4";
     
-    const alDiaList = document.createElement("ol");
-    alDiaList.className = "list-decimal ml-5 space-y-1";
+    const orderedList = document.createElement("ol");
+    orderedList.className = "list-decimal ml-5 space-y-1";
 
-    let itemCounter = 1;
-    
-    alDia.forEach(s => {
+    function createStudentSummaryItem(s, isExpired) {
       const li = document.createElement("li");
-      
-      const nameSpan = document.createTextNode(s.name + " — " + formatDateDDMMYYYY(s.dueDate) + " — ");
-      li.appendChild(nameSpan);
+      if (isExpired) li.className = "text-red-600 font-medium";
 
-      const btn = document.createElement("button");
-      btn.className = "underline hover:text-blue-700 cursor-pointer bg-transparent border-none p-0 text-blue-600";
-      btn.textContent = "Revisar";
-      btn.title = "Buscar automáticamente este alumno";
-
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const studentName = s.name;
-        console.log('🔍 Revisar clickeado para:', studentName);
-
-        const searchField = document.getElementById('search');
-        searchField.value = studentName;
-
-        console.log('📝 Campo de búsqueda actualizado a:', searchField.value);
-
-        render(allStudents);
-
-        console.log('✅ Render ejecutado');
-
-        setTimeout(() => {
-          const tableWrap = document.getElementById('tableWrap');
-          if (tableWrap) {
-            console.log('📜 Haciendo scroll a la tabla');
-            tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-
-        searchField.classList.add('ring-2', 'ring-blue-500');
-        setTimeout(() => {
-          searchField.classList.remove('ring-2', 'ring-blue-500');
-        }, 2000);
-
-        searchField.focus();
-      });
-
-      li.appendChild(btn);
-      alDiaList.appendChild(li);
-      itemCounter++;
-    });
-    
-    vencidos.forEach(s => {
-      const li = document.createElement("li");
-      li.className = "text-red-600";
-      
-      const text = document.createTextNode(s.name + " — " + formatDateDDMMYYYY(s.dueDate) + " — ");
+      const text = document.createTextNode(`${s.name} — ${formatDateDDMMYYYY(s.dueDate)} — `);
       li.appendChild(text);
-      
+
       const btn = document.createElement("button");
-      btn.className = "underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0";
+      btn.className = isExpired
+        ? "underline hover:text-red-800 cursor-pointer bg-transparent border-none p-0 text-red-700"
+        : "underline hover:text-blue-700 cursor-pointer bg-transparent border-none p-0 text-blue-600";
       btn.textContent = "Revisar";
       btn.title = "Buscar automáticamente este alumno";
-      
-      btn.addEventListener('click', function(e) {
+
+      btn.addEventListener('click', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        
-        const studentName = s.name;
-        console.log('🔍 Revisar clickeado para:', studentName);
-        
         const searchField = document.getElementById('search');
-        searchField.value = studentName;
-        
-        console.log('📝 Campo de búsqueda actualizado a:', searchField.value);
-        
+        searchField.value = s.name;
         render(allStudents);
-        
-        console.log('✅ Render ejecutado');
-        
         setTimeout(() => {
           const tableWrap = document.getElementById('tableWrap');
-          if (tableWrap) {
-            console.log('📜 Haciendo scroll a la tabla');
-            tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
+          if (tableWrap) tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
-        
         searchField.classList.add('ring-2', 'ring-blue-500');
-        setTimeout(() => {
-          searchField.classList.remove('ring-2', 'ring-blue-500');
-        }, 2000);
-        
-        searchField.focus();
+        setTimeout(() => searchField.classList.remove('ring-2', 'ring-blue-500'), 2000);
       });
-      
+
       li.appendChild(btn);
-      alDiaList.appendChild(li);
-      itemCounter++;
-    });
+      return li;
+    }
+
+    alDia.forEach(s => orderedList.appendChild(createStudentSummaryItem(s, false)));
+    vencidos.forEach(s => orderedList.appendChild(createStudentSummaryItem(s, true)));
     
     const title = document.createElement("h4");
     title.className = "font-semibold text-slate-700 mb-1";
     title.textContent = `${prof} (${alDia.length + vencidos.length} alumnos)`;
     
     profBlock.appendChild(title);
-    profBlock.appendChild(alDiaList);
+    profBlock.appendChild(orderedList);
     summaryContainer.appendChild(profBlock);
   });
 }
 
-function checkBirthdaysTomorrow(students) {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+// ==========================================
+// 7. BANNER DE CUMPLEAÑOS (HOY Y MAÑANA)
+// ==========================================
+function checkBirthdays(students) {
+  const today = new Date();
+  const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
   const tomorrowMD = `${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
-  const birthdayKids = students.filter(s => {
-    if (!s.birthday) return false;
+  const birthdayToday = [];
+  const birthdayTomorrow = [];
+
+  students.forEach(s => {
+    if (!s.birthday) return;
     const parts = s.birthday.split('-');
-    if (parts.length < 3) return false;
+    if (parts.length < 3) return;
     const md = `${parts[1]}-${parts[2]}`;
-    return md === tomorrowMD;
+    if (md === todayMD) birthdayToday.push(s.name);
+    else if (md === tomorrowMD) birthdayTomorrow.push(s.name);
   });
 
   const banner = document.getElementById('birthdayBanner');
-  if (birthdayKids.length === 0) {
+  const messages = [];
+
+  if (birthdayToday.length > 0) {
+    messages.push(`🎂🎉 ¡HOY es el cumpleaños de: ${birthdayToday.join(', ')}! 🎉🎂`);
+  }
+  if (birthdayTomorrow.length > 0) {
+    messages.push(`🎈 ¡Mañana cumple años: ${birthdayTomorrow.join(', ')}! 🎈`);
+  }
+
+  if (messages.length === 0) {
     banner.classList.add('hidden');
-    banner.textContent = '';
+    banner.innerHTML = '';
     return;
   }
 
-  const names = birthdayKids.map(s => s.name).join(', ');
-  banner.textContent = `🎂🎉 ¡Mañana es el cumpleaños de: ${names}! 🎉🎂`;
+  banner.innerHTML = messages.join('<br/>');
   banner.classList.remove('hidden');
 }
 
-onSnapshot(studentsCol, snapshot=>{
-  allStudents.length=0;
-  snapshot.forEach(docu=>allStudents.push({id:docu.id,...docu.data()}));
+// ==========================================
+// 8. ESCUCHA EN TIEMPO REAL Y EVENTOS DE FORMULARIO
+// ==========================================
+onSnapshot(studentsCol, snapshot => {
+  allStudents.length = 0;
+  snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
   render(allStudents);
   renderScheduleGrid(allStudents);
   renderSummaryByProfessor(allStudents);
-  checkBirthdaysTomorrow(allStudents);
+  checkBirthdays(allStudents);
 });
 
-document.getElementById("studentForm").addEventListener("submit", async ev=>{
+document.getElementById("studentForm").addEventListener("submit", async ev => {
   ev.preventDefault();
   const student = {
     id: document.getElementById('studentId').value,
@@ -588,24 +795,23 @@ document.getElementById("studentForm").addEventListener("submit", async ev=>{
     startDate: document.getElementById('startDate').value,
     dueDate: document.getElementById('dueDate').value,
     birthday: document.getElementById('birthday').value,
-    days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c=>c.value),
+    days: Array.from(document.querySelectorAll('.dayCheckbox:checked')).map(c => c.value),
     time: document.getElementById('fixedTime').value,
     prof: document.getElementById('fixedProf').value.trim()
   };
   await saveStudent(student);
   ev.target.reset();
-  document.getElementById('studentId').value='';
-  document.getElementById('studentPhone').value='+595';
+  document.getElementById('studentId').value = '';
+  document.getElementById('studentPhone').value = '+595';
 });
 
-document.getElementById('clearBtn').addEventListener('click', ()=>{
+document.getElementById('clearBtn').addEventListener('click', () => {
   document.getElementById('studentForm').reset();
-  document.getElementById('studentId').value='';
-  document.getElementById('studentPhone').value='+595';
+  document.getElementById('studentId').value = '';
+  document.getElementById('studentPhone').value = '+595';
 });
 
-document.getElementById('search').addEventListener('input', ()=>render(allStudents));
-
+document.getElementById('search').addEventListener('input', () => render(allStudents));
 </script>
 </body>
 </html>
