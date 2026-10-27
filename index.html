@@ -48,6 +48,58 @@
 
   <!-- Banner de Cumpleaños (Hoy y Mañana) -->
   <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-sm md:text-base shadow-lg"></div>
+
+  <!-- MODAL DE INICIO DE SESIÓN (Con botón Google directo + Guardado permanente) -->
+  <div id="loginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative">
+      <button id="closeModalBtn" type="button" class="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-xl font-bold px-2">&times;</button>
+      <h3 class="text-lg font-bold text-slate-800 mb-1">Iniciar Sesión</h3>
+      <p class="text-xs text-slate-500 mb-4">Tu sesión quedará guardada automáticamente en este dispositivo.</p>
+
+      <!-- Opción 1: Botón directo con Google -->
+      <button id="googleSignInBtn" type="button" class="w-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-lg text-sm shadow-sm transition flex items-center justify-center gap-2 mb-4">
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+        </svg>
+        Continuar con Google
+      </button>
+
+      <div class="relative flex py-1 items-center mb-4">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="flex-shrink mx-3 text-slate-400 text-xs">o acceso directo</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+      </div>
+
+      <!-- Opción 2: Acceso directo que se guarda para siempre -->
+      <form id="loginForm" class="space-y-3" autocomplete="on">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Correo electrónico</label>
+          <input id="loginEmail" name="email" type="email" autocomplete="username" required placeholder="correo@ejemplo.com" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <div id="passwordWrap" class="hidden">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña de Administrador</label>
+          <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Ingresa tu clave..." class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer pt-1">
+          <input type="checkbox" id="rememberSession" checked class="rounded text-blue-600" />
+          Mantener mi sesión iniciada siempre
+        </label>
+
+        <p id="loginError" class="hidden text-xs text-red-600 font-semibold"></p>
+
+        <div class="pt-1 flex gap-2">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow transition">
+            Entrar y Guardar Sesión
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   
   <div class="max-w-7xl mx-auto p-4 md:p-6">
     <!-- Encabezado y Barra de Sesión / Privacidad -->
@@ -57,28 +109,22 @@
         <p class="text-xs md:text-sm text-slate-100">Registro de alumnos, horarios fijos, días de la semana, profes y pagos.</p>
       </div>
 
-      <!-- Panel de Usuario (Login con Google) -->
-      <div class="bg-black/40 backdrop-blur-md p-3 rounded-lg flex flex-wrap items-center gap-3 border border-white/20 self-start md:self-auto">
+      <!-- Panel de Usuario -->
+      <div class="bg-black/45 backdrop-blur-md p-3 rounded-lg flex flex-wrap items-center gap-3 border border-white/20 self-start md:self-auto">
         <div id="authStatus" class="text-xs md:text-sm">
           <span class="text-yellow-300 font-semibold">Modo Lectura</span> (Sin sesión)
         </div>
-        <button id="loginBtn" class="bg-white text-slate-800 hover:bg-slate-100 font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition flex items-center gap-2">
-          <svg class="w-4 h-4" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
-            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
-            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
-          </svg>
+        <button id="openLoginBtn" type="button" class="bg-white text-slate-800 hover:bg-slate-100 font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
           Iniciar sesión
         </button>
-        <button id="logoutBtn" class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
-          Salir
+        <button id="logoutBtn" type="button" class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
+          Cerrar sesión
         </button>
       </div>
     </header>
 
     <section id="mainGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Formulario (Solo visible para joellpethers@gmail.com) -->
+      <!-- Formulario (Solo visible para el administrador) -->
       <div id="adminFormPanel" class="hidden lg:col-span-1 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow h-fit">
         <div class="flex items-center justify-between mb-2">
           <h2 class="font-semibold text-lg">Agregar / editar alumno</h2>
@@ -191,7 +237,7 @@
     </section>
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
-      Conectado a Firebase Firestore • Optimizado para iOS, Android y PC.
+      Conectado a Firebase Firestore • Sesión persistente para iOS, Android y PC.
     </footer>
   </div>
 
@@ -199,7 +245,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } 
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -215,12 +261,47 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 const studentsCol = collection(db, "students");
 
-// Correo exclusivo con permisos de edición y eliminación
+// Forzar persistencia local en Firebase Auth
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+// =========================================================
+// CONFIGURACIÓN DE PRIVACIDAD Y PERSISTENCIA PERMANENTE
+// =========================================================
 const ADMIN_EMAIL = "joellpethers@gmail.com";
-let currentUserEmail = null;
+const ADMIN_PASS = "flexbody2026";
+const STORAGE_KEY = "flexbody_saved_user_email";
+
+// Funciones para guardar y recuperar sesión tanto en LocalStorage como en Cookies (1 año de duración para iOS)
+function savePermanentSession(email) {
+  try {
+    localStorage.setItem(STORAGE_KEY, email);
+  } catch (e) {}
+  const d = new Date();
+  d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000)); // 365 días
+  document.cookie = `${STORAGE_KEY}=${encodeURIComponent(email)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+}
+
+function getPermanentSession() {
+  try {
+    const fromStorage = localStorage.getItem(STORAGE_KEY);
+    if (fromStorage) return fromStorage;
+  } catch (e) {}
+  const match = document.cookie.match(new RegExp('(^| )' + STORAGE_KEY + '=([^;]+)'));
+  if (match) return decodeURIComponent(match[2]);
+  return null;
+}
+
+function clearPermanentSession() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {}
+  document.cookie = `${STORAGE_KEY}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+let currentUserEmail = getPermanentSession();
 const allStudents = [];
 
 function isAdmin() {
@@ -228,7 +309,7 @@ function isAdmin() {
 }
 
 // ==========================================
-// 1. CORRECCIÓN DE ZONA HORARIA LOCAL (NO UTC)
+// 1. ZONA HORARIA LOCAL EXACTA (NO UTC)
 // ==========================================
 function getLocalTodayStr() {
   const now = new Date();
@@ -254,33 +335,99 @@ function addOneMonthLocal(dateStr) {
     targetMonth = 1;
     targetYear += 1;
   }
-  // Obtener el último día del mes siguiente por si era 31 de enero -> 28/29 de febrero
   const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
   const targetDay = Math.min(day, daysInTargetMonth);
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
 }
 
-// ==========================================
-// 2. AUTENTICACIÓN Y CONTROL DE PRIVACIDAD
-// ==========================================
-getRedirectResult(auth).catch(err => console.error("Error en redirect login:", err));
+// =========================================================
+// 2. SISTEMA DE SESIÓN (GOOGLE DIRECTO + GUARDADO PERMANENTE)
+// =========================================================
+const loginModal = document.getElementById('loginModal');
+const loginEmailInput = document.getElementById('loginEmail');
+const loginPasswordInput = document.getElementById('loginPassword');
+const passwordWrap = document.getElementById('passwordWrap');
+const loginError = document.getElementById('loginError');
 
-document.getElementById('loginBtn').addEventListener('click', async () => {
+document.getElementById('openLoginBtn').addEventListener('click', () => {
+  loginError.classList.add('hidden');
+  loginEmailInput.value = ''; // Campo vacío sin pre-escribir el correo
+  loginPasswordInput.value = '';
+  passwordWrap.classList.add('hidden');
+  loginModal.classList.remove('hidden');
+  setTimeout(() => loginEmailInput.focus(), 100);
+});
+
+document.getElementById('closeModalBtn').addEventListener('click', () => {
+  loginModal.classList.add('hidden');
+});
+
+// Botón de Google Directo
+document.getElementById('googleSignInBtn').addEventListener('click', async () => {
+  loginError.classList.add('hidden');
   try {
-    await signInWithPopup(auth, provider);
-  } catch (err) {
-    // Fallback para iOS Safari si bloquea popups
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
-      await signInWithRedirect(auth, provider);
-    } else {
-      console.error("Error al iniciar sesión:", err);
-      alert("No se pudo iniciar sesión. Verifica que el inicio con Google esté habilitado en Firebase Authentication.");
+    const result = await signInWithPopup(auth, googleProvider);
+    if (result && result.user && result.user.email) {
+      currentUserEmail = result.user.email.toLowerCase();
+      savePermanentSession(currentUserEmail);
+      loginModal.classList.add('hidden');
+      updateAdminUI();
     }
+  } catch (err) {
+    console.warn("Aviso Google Popup:", err);
+    loginError.textContent = "Tu navegador bloqueó la ventana de Google o falta autorizar el dominio en Firebase. Ingresa tu correo abajo para entrar directo (se guardará para siempre).";
+    loginError.classList.remove('hidden');
+    loginEmailInput.focus();
   }
 });
 
+// Sincronizar automáticamente si Firebase detecta sesión previa de Google
+onAuthStateChanged(auth, (user) => {
+  if (user && user.email) {
+    currentUserEmail = user.email.toLowerCase();
+    savePermanentSession(currentUserEmail);
+    updateAdminUI();
+  }
+});
+
+loginEmailInput.addEventListener('input', () => {
+  const val = loginEmailInput.value.trim().toLowerCase();
+  if (val === ADMIN_EMAIL.toLowerCase()) {
+    passwordWrap.classList.remove('hidden');
+  } else {
+    passwordWrap.classList.add('hidden');
+  }
+  loginError.classList.add('hidden');
+});
+
+document.getElementById('loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const email = loginEmailInput.value.trim().toLowerCase();
+  const pass = loginPasswordInput.value;
+
+  if (!email) return;
+
+  if (email === ADMIN_EMAIL.toLowerCase()) {
+    if (pass !== ADMIN_PASS) {
+      loginError.textContent = "Contraseña de administrador incorrecta.";
+      loginError.classList.remove('hidden');
+      passwordWrap.classList.remove('hidden');
+      return;
+    }
+  }
+
+  currentUserEmail = email;
+  savePermanentSession(email);
+  loginModal.classList.add('hidden');
+  updateAdminUI();
+});
+
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await signOut(auth);
+  if (!confirm("¿Seguro que deseas cerrar tu sesión guardada?")) return;
+  currentUserEmail = null;
+  clearPermanentSession();
+  try { await signOut(auth); } catch (e) {}
+  updateAdminUI();
 });
 
 function updateAdminUI() {
@@ -288,15 +435,15 @@ function updateAdminUI() {
   const tablesPanel = document.getElementById('tablesPanel');
   const actionsHeader = document.getElementById('mainTableActionsHeader');
   const authStatus = document.getElementById('authStatus');
-  const loginBtn = document.getElementById('loginBtn');
+  const openLoginBtn = document.getElementById('openLoginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
 
   if (currentUserEmail) {
-    loginBtn.classList.add('hidden');
+    openLoginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
 
     if (isAdmin()) {
-      authStatus.innerHTML = `<span class="text-green-400 font-bold">● Admin:</span> ${currentUserEmail}`;
+      authStatus.innerHTML = `<span class="text-green-400 font-bold">● Admin (Guardado):</span> ${currentUserEmail}`;
       adminPanel.classList.remove('hidden');
       tablesPanel.classList.remove('lg:col-span-3');
       tablesPanel.classList.add('lg:col-span-2');
@@ -309,9 +456,9 @@ function updateAdminUI() {
       actionsHeader.classList.add('hidden');
     }
   } else {
-    loginBtn.classList.remove('hidden');
+    openLoginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
-    authStatus.innerHTML = `<span class="text-yellow-300 font-semibold">Modo Solo Lectura</span> (Inicia sesión para administrar)`;
+    authStatus.innerHTML = `<span class="text-yellow-300 font-semibold">Modo Solo Lectura</span> (Sin sesión)`;
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
     tablesPanel.classList.add('lg:col-span-3');
@@ -321,11 +468,6 @@ function updateAdminUI() {
   render(allStudents);
   renderScheduleGrid(allStudents);
 }
-
-onAuthStateChanged(auth, (user) => {
-  currentUserEmail = user ? user.email : null;
-  updateAdminUI();
-});
 
 // ==========================================
 // 3. OPERACIONES ABM (PROTEGIDAS SOLO ADMIN)
@@ -343,7 +485,7 @@ async function saveStudent(student) {
 
 async function deleteStudentFirebase(id) {
   if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede eliminar alumnos.");
+    alert("Acceso denegado: Solo el administrador puede eliminar alumnos.");
     return;
   }
   if (!id) return;
@@ -355,7 +497,7 @@ async function deleteStudentFirebase(id) {
 
 function editStudentById(id) {
   if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede editar alumnos.");
+    alert("Acceso denegado: Solo el administrador puede editar alumnos.");
     return;
   }
   const s = allStudents.find(item => item.id === id);
@@ -377,7 +519,7 @@ function editStudentById(id) {
 
 async function renewStudent(id, currentDate) {
   if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede renovar pagos.");
+    alert("Acceso denegado: Solo el administrador puede renovar pagos.");
     return;
   }
   if (!id) return;
@@ -387,7 +529,7 @@ async function renewStudent(id, currentDate) {
   alert(`Fecha de próximo pago renovada al: ${formatDateDDMMYYYY(nuevaStr)}`);
 }
 
-// Delegación global de eventos para botones Editar, Renovar y Eliminar (tanto en tabla general como en tablillas)
+// Delegación global para botones Editar, Renovar y Eliminar
 document.addEventListener('click', (ev) => {
   const editBtn = ev.target.closest('.edit-btn');
   if (editBtn) {
@@ -551,7 +693,7 @@ function renderScheduleGrid(students) {
     gridMap[key].push(s);
   });
 
-  // Ordenar las tablillas alfabéticamente por Profesor y luego cronológicamente por Hora
+  // Ordenar por Profesor (A-Z) y luego por Hora
   const sortedKeys = Object.keys(gridMap).sort((a, b) => {
     const [profA, timeA] = a.split("||");
     const [profB, timeB] = b.split("||");
@@ -604,7 +746,7 @@ function renderScheduleGrid(students) {
       const isVencido = s.dueDate && s.dueDate < hoy;
       const tr = document.createElement('tr');
       
-      // Si el alumno está vencido, toda su fila en la tablilla se resalta en amarillo
+      // Si el alumno está vencido, toda su fila en la tablilla aparece en amarillo
       tr.className = isVencido ? 'bg-yellow-200 font-medium' : 'hover:bg-slate-50';
 
       const daysCells = days.map(d => {
@@ -775,8 +917,10 @@ function checkBirthdays(students) {
 }
 
 // ==========================================
-// 8. ESCUCHA EN TIEMPO REAL Y EVENTOS DE FORMULARIO
+// 8. INICIALIZACIÓN Y EVENTOS DE FORMULARIO
 // ==========================================
+updateAdminUI();
+
 onSnapshot(studentsCol, snapshot => {
   allStudents.length = 0;
   snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
