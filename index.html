@@ -49,7 +49,7 @@
   <!-- Banner de Cumpleaños (Hoy y Mañana) -->
   <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-sm md:text-base shadow-lg"></div>
 
-  <!-- MODAL DE INICIO DE SESIÓN (Google Directo + Respaldo por Contraseña) -->
+  <!-- MODAL DE INICIO DE SESIÓN -->
   <div id="loginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative">
       <button id="closeModalBtn" type="button" class="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-2xl font-bold px-2 leading-none">&times;</button>
@@ -186,35 +186,17 @@
         </form>
       </div>
 
-      <!-- Panel Principal de Tablas -->
+      <!-- Panel Principal (Buscador + Tablillas de Asistencia) -->
       <div id="tablesPanel" class="lg:col-span-3 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
-          <h2 class="font-semibold text-lg">Alumnos registrados</h2>
-          <input id="search" placeholder="Buscar por nombre, profe, fecha o estado..." class="border border-slate-300 p-2 rounded w-full sm:w-72" />
-        </div>
-
-        <div id="tableWrap" class="overflow-x-auto border rounded-lg bg-white">
-          <table class="w-full table-auto border-collapse">
-            <thead class="text-left text-xs md:text-sm text-slate-700 bg-slate-100 border-b">
-              <tr>
-                <th class="p-2">#</th>
-                <th class="p-2">Nombre</th>
-                <th class="p-2">Días / Hora / Profe</th>
-                <th class="p-2">Próx. pago</th>
-                <th class="p-2">Cumpleaños</th>
-                <th class="p-2">Estado</th>
-                <th class="p-2 text-center">WhatsApp</th>
-                <th id="mainTableActionsHeader" class="p-2 text-center hidden">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="studentsTbody" class="text-xs md:text-sm divide-y divide-slate-200"></tbody>
-          </table>
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
+          <h2 class="font-semibold text-lg">Cuadrículas de asistencia por profesor</h2>
+          <input id="search" placeholder="Buscar por nombre, profe, día, estado..." class="border border-slate-300 p-2 rounded w-full sm:w-80" />
         </div>
 
         <!-- Cuadrícula semanal / Tablillas -->
-        <div class="mt-8">
+        <div>
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <h3 class="font-semibold text-lg">Cuadrícula semanal de asistencia por profesor y hora</h3>
+            <h3 class="font-semibold text-base">Horarios fijos</h3>
             <div class="flex flex-wrap gap-3 text-xs">
               <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-green-200 border inline-block"></span> Al día</span>
               <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-yellow-300 border inline-block"></span> Alumno Vencido</span>
@@ -261,9 +243,6 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 const studentsCol = collection(db, "students");
 
-// =========================================================
-// CONFIGURACIÓN DE PRIVACIDAD Y GUARDADO PERMANENTE
-// =========================================================
 const ADMIN_EMAIL = "joellpethers@gmail.com";
 const ADMIN_PASS = "flexbody2026";
 const STORAGE_KEY = "flexbody_permanent_user_v3";
@@ -279,7 +258,7 @@ function savePermanentSession(email) {
     localStorage.setItem(STORAGE_KEY, clean);
   } catch (e) {}
   const d = new Date();
-  d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 año
+  d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000));
   document.cookie = `${STORAGE_KEY}=${encodeURIComponent(clean)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
 }
 
@@ -307,9 +286,6 @@ function isAdmin() {
   return cleanEmail(currentUserEmail) === cleanEmail(ADMIN_EMAIL);
 }
 
-// ==========================================
-// 1. ZONA HORARIA LOCAL EXACTA (NO UTC)
-// ==========================================
 function getLocalTodayStr() {
   const now = new Date();
   const year = now.getFullYear();
@@ -339,9 +315,6 @@ function addOneMonthLocal(dateStr) {
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
 }
 
-// =========================================================
-// 2. SISTEMA DE SESIÓN (GOOGLE POPUP SEGURO + CONTRASEÑA)
-// =========================================================
 const loginModal = document.getElementById('loginModal');
 const loginEmailInput = document.getElementById('loginEmail');
 const loginPasswordInput = document.getElementById('loginPassword');
@@ -358,7 +331,6 @@ document.getElementById('closeModalBtn').addEventListener('click', () => {
   loginModal.classList.add('hidden');
 });
 
-// Botón Iniciar con Google (Usa browserPopupRedirectResolver para evitar pantallas en blanco)
 document.getElementById('googleLoginBtn').addEventListener('click', async () => {
   loginError.classList.add('hidden');
   try {
@@ -371,13 +343,12 @@ document.getElementById('googleLoginBtn').addEventListener('click', async () => 
     }
   } catch (err) {
     console.warn("Aviso Google Popup:", err);
-    loginError.innerHTML = `No se pudo abrir la ventana de Google (${err.code || 'bloqueado'}). <br><strong>Ingresa tu correo y contraseña abajo para entrar directo.</strong>`;
+    loginError.innerHTML = `No se pudo abrir la ventana de Google. Ingresa tu correo y contraseña abajo.`;
     loginError.classList.remove('hidden');
     loginEmailInput.focus();
   }
 });
 
-// Si Firebase Auth ya tenía sesión de Google activa, la recupera automáticamente
 onAuthStateChanged(auth, (user) => {
   if (user && user.email) {
     currentUserEmail = cleanEmail(user.email);
@@ -386,7 +357,6 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// Inicio con correo y contraseña directo
 document.getElementById('loginForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const email = cleanEmail(loginEmailInput.value);
@@ -400,7 +370,7 @@ document.getElementById('loginForm').addEventListener('submit', (e) => {
 
   if (email === cleanEmail(ADMIN_EMAIL)) {
     if (pass !== ADMIN_PASS) {
-      loginError.textContent = "Contraseña incorrecta. Para joellpethers@gmail.com usa la clave: flexbody2026";
+      loginError.textContent = "Contraseña incorrecta para Administrador.";
       loginError.classList.remove('hidden');
       loginPasswordInput.focus();
       return;
@@ -424,7 +394,6 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 function updateAdminUI() {
   const adminPanel = document.getElementById('adminFormPanel');
   const tablesPanel = document.getElementById('tablesPanel');
-  const actionsHeader = document.getElementById('mainTableActionsHeader');
   const authStatus = document.getElementById('authStatus');
   const openLoginBtn = document.getElementById('openLoginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -434,17 +403,15 @@ function updateAdminUI() {
     logoutBtn.classList.remove('hidden');
 
     if (isAdmin()) {
-      authStatus.innerHTML = `<span class="text-green-400 font-bold">● Admin Activo (Edición habilitada):</span> ${currentUserEmail}`;
+      authStatus.innerHTML = `<span class="text-green-400 font-bold">● Admin Activo:</span> ${currentUserEmail}`;
       adminPanel.classList.remove('hidden');
       tablesPanel.classList.remove('lg:col-span-3');
       tablesPanel.classList.add('lg:col-span-2');
-      actionsHeader.classList.remove('hidden');
     } else {
       authStatus.innerHTML = `<span class="text-yellow-300 font-bold">● Solo Lectura:</span> ${currentUserEmail}`;
       adminPanel.classList.add('hidden');
       tablesPanel.classList.remove('lg:col-span-2');
       tablesPanel.classList.add('lg:col-span-3');
-      actionsHeader.classList.add('hidden');
     }
   } else {
     openLoginBtn.classList.remove('hidden');
@@ -453,59 +420,43 @@ function updateAdminUI() {
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
     tablesPanel.classList.add('lg:col-span-3');
-    actionsHeader.classList.add('hidden');
   }
 
-  render(allStudents);
   renderScheduleGrid(allStudents);
+  renderSummaryByProfessor(allStudents);
 }
 
-// ==========================================
-// 3. OPERACIONES ABM (CON DETECCIÓN DE ERRORES DE FIREBASE)
-// ==========================================
 async function saveStudent(student) {
   if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede guardar cambios.");
+    alert("Acceso denegado: Solo el administrador puede guardar cambios.");
     return false;
   }
   const data = { ...student };
   delete data.id;
   try {
-    if (student.id) {
-      await updateDoc(doc(db, "students", student.id), data);
-    } else {
-      await addDoc(studentsCol, data);
-    }
+    if (student.id) await updateDoc(doc(db, "students", student.id), data);
+    else await addDoc(studentsCol, data);
     return true;
   } catch (err) {
-    console.error("Error en Firebase al guardar:", err);
-    alert("Error de permisos en Firebase: " + err.message + "\n\nSolución: Ve a Firebase Console -> Firestore Database -> Reglas, y pon: allow read, write: if true;");
+    alert("Error en Firebase: " + err.message);
     return false;
   }
 }
 
 async function deleteStudentFirebase(id) {
-  if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede eliminar alumnos.");
-    return;
-  }
+  if (!isAdmin()) return;
   if (!id) return;
   const student = allStudents.find(s => s.id === id);
-  const nombre = student ? student.name : "este alumno";
-  if (!confirm(`¿Seguro quieres eliminar a ${nombre}?`)) return;
+  if (!confirm(`¿Seguro quieres eliminar a ${student ? student.name : 'este alumno'}?`)) return;
   try {
     await deleteDoc(doc(db, "students", id));
   } catch (err) {
-    console.error("Error en Firebase al eliminar:", err);
-    alert("Error de permisos en Firebase al eliminar: " + err.message);
+    alert("Error al eliminar: " + err.message);
   }
 }
 
 function editStudentById(id) {
-  if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede editar alumnos.");
-    return;
-  }
+  if (!isAdmin()) return;
   const s = allStudents.find(item => item.id === id);
   if (!s) return;
 
@@ -526,14 +477,10 @@ function editStudentById(id) {
 
   document.getElementById("formTitle").textContent = `Editando: ${s.name}`;
   adminPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  setTimeout(() => document.getElementById("name").focus(), 300);
 }
 
 async function renewStudent(id, currentDate) {
-  if (!isAdmin()) {
-    alert("Acceso denegado: Solo joellpethers@gmail.com puede renovar pagos.");
-    return;
-  }
+  if (!isAdmin()) return;
   if (!id) return;
   const baseDate = currentDate || getLocalTodayStr();
   const nuevaStr = addOneMonthLocal(baseDate);
@@ -541,36 +488,19 @@ async function renewStudent(id, currentDate) {
     await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
     alert(`Fecha de próximo pago renovada al: ${formatDateDDMMYYYY(nuevaStr)}`);
   } catch (err) {
-    console.error("Error al renovar:", err);
-    alert("Error de permisos en Firebase al renovar: " + err.message);
+    alert("Error al renovar: " + err.message);
   }
 }
 
-// Delegación global para botones Editar, Renovar y Eliminar
 document.addEventListener('click', (ev) => {
   const editBtn = ev.target.closest('.edit-btn');
-  if (editBtn) {
-    ev.preventDefault();
-    editStudentById(editBtn.dataset.id);
-    return;
-  }
+  if (editBtn) { ev.preventDefault(); editStudentById(editBtn.dataset.id); return; }
   const renewBtn = ev.target.closest('.renew-btn');
-  if (renewBtn) {
-    ev.preventDefault();
-    renewStudent(renewBtn.dataset.id, renewBtn.dataset.date);
-    return;
-  }
+  if (renewBtn) { ev.preventDefault(); renewStudent(renewBtn.dataset.id, renewBtn.dataset.date); return; }
   const deleteBtn = ev.target.closest('.delete-btn');
-  if (deleteBtn) {
-    ev.preventDefault();
-    deleteStudentFirebase(deleteBtn.dataset.id);
-    return;
-  }
+  if (deleteBtn) { ev.preventDefault(); deleteStudentFirebase(deleteBtn.dataset.id); return; }
 });
 
-// ==========================================
-// 4. BÚSQUEDA AVANZADA Y RENDER PRINCIPAL
-// ==========================================
 function normalizeText(text) {
   if (!text) return '';
   return text.toString().toLowerCase()
@@ -588,20 +518,15 @@ function getStudentStatus(dueDate) {
 
 function advancedSearch(students, searchTerm) {
   if (!searchTerm || !searchTerm.trim()) return students;
-  
   const normalizedSearch = normalizeText(searchTerm);
   const isShortSearch = normalizedSearch.length <= 2;
   
   return students.filter(s => {
     const nombreNormalizado = normalizeText(s.name);
-    let nombreMatch = isShortSearch
-      ? nombreNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch))
-      : nombreNormalizado.includes(normalizedSearch);
+    let nombreMatch = isShortSearch ? nombreNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch)) : nombreNormalizado.includes(normalizedSearch);
     
     const profNormalizado = normalizeText(s.prof || '');
-    let profMatch = isShortSearch
-      ? profNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch))
-      : profNormalizado.includes(normalizedSearch);
+    let profMatch = isShortSearch ? profNormalizado.split(/\s+/).some(p => p.startsWith(normalizedSearch)) : profNormalizado.includes(normalizedSearch);
     
     const diasNormalizados = (s.days || []).map(d => normalizeText(d));
     const diasMatch = diasNormalizados.some(dia => dia.startsWith(normalizedSearch));
@@ -622,80 +547,19 @@ function advancedSearch(students, searchTerm) {
     let estadoKeywordMatch = false;
     Object.keys(estadoKeywords).forEach(key => {
       if (estado === key) {
-        estadoKeywordMatch = estadoKeywords[key].some(keyword => 
-          normalizedSearch === normalizeText(keyword) || normalizeText(keyword).startsWith(normalizedSearch)
-        );
+        estadoKeywordMatch = estadoKeywords[key].some(keyword => normalizedSearch === normalizeText(keyword) || normalizeText(keyword).startsWith(normalizedSearch));
       }
     });
     
     const phoneDigits = searchTerm.replace(/\D/g, '');
-    const phoneMatch = phoneDigits.length >= 3 && 
-                       (s.studentPhone || '').replace(/\D/g, '').includes(phoneDigits);
+    const phoneMatch = phoneDigits.length >= 3 && (s.studentPhone || '').replace(/\D/g, '').includes(phoneDigits);
     
-    return nombreMatch || profMatch || diasMatch || horarioMatch || 
-           fechaMatch || estadoMatch || estadoKeywordMatch || phoneMatch;
-  });
-}
-
-function render(students) {
-  const tbody = document.getElementById('studentsTbody');
-  tbody.innerHTML = '';
-  const search = document.getElementById('search').value;
-  const hoy = getLocalTodayStr();
-  const adminMode = isAdmin();
-
-  students.sort((a, b) => (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99'));
-  const filteredStudents = advancedSearch(students, search);
-
-  filteredStudents.forEach((s, index) => {
-    const classStr = (s.days || []).map(d => `${d} ${s.time || ''} (${s.prof || '-'})`).join('<br/>');
-    const waLink = s.studentPhone ? 
-      `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
-        'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
-      )}` : '#';
-
-    const isVencido = s.dueDate && s.dueDate < hoy;
-    const isHoy = s.dueDate === hoy;
-
-    let estadoBadge = '<span class="text-green-600 font-semibold">Al día</span>';
-    if (!s.dueDate) estadoBadge = '<span class="text-slate-400">Sin fecha</span>';
-    else if (isVencido) estadoBadge = '<span class="text-red-600 font-semibold">Vencido</span>';
-    else if (isHoy) estadoBadge = '<span class="text-orange-500 font-semibold">Vence hoy</span>';
-
-    const tr = document.createElement('tr');
-    tr.className = isVencido ? 'bg-yellow-50/70 hover:bg-yellow-100/80' : 'hover:bg-slate-50';
-
-    let actionsCell = '';
-    if (adminMode) {
-      actionsCell = `
-        <td class="p-2 align-top text-center whitespace-nowrap">
-          <div class="flex items-center justify-center gap-1">
-            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2.5 py-1 rounded text-xs font-medium edit-btn" data-id="${s.id}">Editar</button>
-            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2.5 py-1 rounded text-xs font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}">Renovar</button>
-            <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-medium delete-btn" data-id="${s.id}">Eliminar</button>
-          </div>
-        </td>
-      `;
-    }
-
-    tr.innerHTML = `
-      <td class="p-2 align-top text-slate-500 font-medium">${index + 1}.</td>
-      <td class="p-2 align-top font-medium">${s.name || '-'}</td>
-      <td class="p-2 align-top">${classStr || '-'}</td>
-      <td class="p-2 align-top whitespace-nowrap">${formatDateDDMMYYYY(s.dueDate)}</td>
-      <td class="p-2 align-top whitespace-nowrap">${formatDateDDMMYYYY(s.birthday)}</td>
-      <td class="p-2 align-top whitespace-nowrap">${estadoBadge}</td>
-      <td class="p-2 align-top text-center">
-        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2.5 py-1 rounded text-xs font-medium">Notificar</a>
-      </td>
-      ${actionsCell}
-    `;
-    tbody.appendChild(tr);
+    return nombreMatch || profMatch || diasMatch || horarioMatch || fechaMatch || estadoMatch || estadoKeywordMatch || phoneMatch;
   });
 }
 
 // =========================================================
-// 5. TABLILLAS POR PROFESOR Y HORA (CON VENCIMIENTO, COLOR AMARILLO Y BOTONES)
+// TABLILLAS SEMANALES (CON CUMPLEAÑOS ANTES DE VENCE Y WHATSAPP EN ACCIONES)
 // =========================================================
 function renderScheduleGrid(students) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
@@ -704,16 +568,18 @@ function renderScheduleGrid(students) {
   container.innerHTML = '';
   const hoy = getLocalTodayStr();
   const adminMode = isAdmin();
+  const searchTerm = document.getElementById('search').value;
+
+  const filteredStudents = advancedSearch(students, searchTerm);
 
   const gridMap = {};
-  students.forEach(s => {
+  filteredStudents.forEach(s => {
     if (!s.prof || !s.time) return;
     const key = `${s.prof.trim()}||${s.time.trim()}`;
     if (!gridMap[key]) gridMap[key] = [];
     gridMap[key].push(s);
   });
 
-  // Ordenar por Profesor (A-Z) y luego por Hora
   const sortedKeys = Object.keys(gridMap).sort((a, b) => {
     const [profA, timeA] = a.split("||");
     const [profB, timeB] = b.split("||");
@@ -722,6 +588,11 @@ function renderScheduleGrid(students) {
     return timeA.localeCompare(timeB);
   });
 
+  if (sortedKeys.length === 0) {
+    container.innerHTML = `<div class="p-6 text-center text-slate-500 bg-white rounded-lg border">No se encontraron alumnos con ese criterio de búsqueda.</div>`;
+    return;
+  }
+
   sortedKeys.forEach(key => {
     const [prof, timeBase] = key.split("||");
     let profStudents = gridMap[key];
@@ -729,7 +600,8 @@ function renderScheduleGrid(students) {
 
     const dayCounts = {};
     days.forEach(d => {
-      dayCounts[d] = profStudents.filter(s => (s.days || []).includes(d)).length;
+      // Contar sobre el total general de alumnos del horario (no solo los filtrados) para el límite de 13
+      dayCounts[d] = students.filter(s => s.prof && s.prof.trim() === prof.trim() && s.time === timeBase && (s.days || []).includes(d)).length;
     });
 
     const wrapper = document.createElement('div');
@@ -739,7 +611,7 @@ function renderScheduleGrid(students) {
     profTitle.className = 'bg-slate-800 text-white px-3 py-2 font-semibold text-sm flex justify-between items-center';
     profTitle.innerHTML = `
       <span>Profesor: ${prof} — Horario: ${timeBase} hs</span>
-      <span class="text-xs bg-slate-700 px-2 py-0.5 rounded">${profStudents.length} alumnos</span>
+      <span class="text-xs bg-slate-700 px-2 py-0.5 rounded">${profStudents.length} alumnos mostrados</span>
     `;
 
     const table = document.createElement('table');
@@ -748,14 +620,15 @@ function renderScheduleGrid(students) {
       <thead class="bg-slate-200 text-slate-700">
         <tr>
           <th class="border p-2 text-left">Alumno</th>
-          <th class="border p-2 text-center whitespace-nowrap">Vence</th>
+          <th class="border p-2 text-center whitespace-nowrap">Cumpleaños</th>
+          <th class="border p-2 text-center whitespace-nowrap">Próx. pago</th>
           ${days.map(d => {
             const isFull = dayCounts[d] >= CLASS_LIMIT;
             return `<th class="border p-2 text-center ${isFull ? 'bg-red-600 text-white' : ''}">
               ${d}<br><span class="text-[11px] font-normal">(${dayCounts[d]}/${CLASS_LIMIT})</span>
             </th>`;
           }).join('')}
-          ${adminMode ? '<th class="border p-2 text-center">Acciones</th>' : ''}
+          <th class="border p-2 text-center">Acciones</th>
         </tr>
       </thead>
     `;
@@ -765,8 +638,6 @@ function renderScheduleGrid(students) {
     profStudents.forEach(s => {
       const isVencido = s.dueDate && s.dueDate < hoy;
       const tr = document.createElement('tr');
-      
-      // Si el alumno está vencido, toda su fila en la tablilla aparece en amarillo
       tr.className = isVencido ? 'bg-yellow-200 font-medium' : 'hover:bg-slate-50';
 
       const daysCells = days.map(d => {
@@ -784,26 +655,38 @@ function renderScheduleGrid(students) {
         return `<td class="border p-1.5 text-xs text-center ${cellColor}">${hasClass ? s.name : ''}</td>`;
       }).join('');
 
-      const actionsCell = adminMode ? `
-        <td class="border p-1.5 text-center whitespace-nowrap">
-          <div class="flex items-center justify-center gap-1">
-            <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
-            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[11px] font-medium edit-btn" data-id="${s.id}" title="Editar alumno">Editar</button>
-            <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded text-[11px] font-medium delete-btn" data-id="${s.id}" title="Eliminar alumno">Eliminar</button>
-          </div>
-        </td>
-      ` : '';
+      const waLink = s.studentPhone ? 
+        `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
+          'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
+        )}` : '#';
+
+      let actionsButtons = `
+        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Enviar WhatsApp">WhatsApp</a>
+      `;
+
+      if (adminMode) {
+        actionsButtons += `
+          <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
+          <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[11px] font-medium edit-btn" data-id="${s.id}" title="Editar alumno">Editar</button>
+          <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded text-[11px] font-medium delete-btn" data-id="${s.id}" title="Eliminar alumno">Eliminar</button>
+        `;
+      }
 
       tr.innerHTML = `
         <td class="border p-1.5 font-semibold whitespace-nowrap">
           ${s.name}
           ${isVencido ? '<span class="ml-1 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">Vencido</span>' : ''}
         </td>
+        <td class="border p-1.5 text-center whitespace-nowrap">${formatDateDDMMYYYY(s.birthday)}</td>
         <td class="border p-1.5 text-center whitespace-nowrap ${isVencido ? 'text-red-700 font-bold' : ''}">
           ${formatDateDDMMYYYY(s.dueDate)}
         </td>
         ${daysCells}
-        ${actionsCell}
+        <td class="border p-1.5 text-center whitespace-nowrap">
+          <div class="flex items-center justify-center gap-1 flex-wrap">
+            ${actionsButtons}
+          </div>
+        </td>
       `;
       tbodyEl.appendChild(tr);
     });
@@ -816,7 +699,7 @@ function renderScheduleGrid(students) {
 }
 
 // ==========================================
-// 6. RESUMEN POR PROFESOR
+// RESUMEN POR PROFESOR
 // ==========================================
 function renderSummaryByProfessor(students) {
   const hoy = getLocalTodayStr();
@@ -868,10 +751,9 @@ function renderSummaryByProfessor(students) {
         e.preventDefault();
         const searchField = document.getElementById('search');
         searchField.value = s.name;
-        render(allStudents);
+        renderScheduleGrid(allStudents);
         setTimeout(() => {
-          const tableWrap = document.getElementById('tableWrap');
-          if (tableWrap) tableWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          searchField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
         searchField.classList.add('ring-2', 'ring-blue-500');
         setTimeout(() => searchField.classList.remove('ring-2', 'ring-blue-500'), 2000);
@@ -894,9 +776,6 @@ function renderSummaryByProfessor(students) {
   });
 }
 
-// ==========================================
-// 7. BANNER DE CUMPLEAÑOS (HOY Y MAÑANA)
-// ==========================================
 function checkBirthdays(students) {
   const today = new Date();
   const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -919,12 +798,8 @@ function checkBirthdays(students) {
   const banner = document.getElementById('birthdayBanner');
   const messages = [];
 
-  if (birthdayToday.length > 0) {
-    messages.push(`🎂🎉 ¡HOY es el cumpleaños de: ${birthdayToday.join(', ')}! 🎉🎂`);
-  }
-  if (birthdayTomorrow.length > 0) {
-    messages.push(`🎈 ¡Mañana cumple años: ${birthdayTomorrow.join(', ')}! 🎈`);
-  }
+  if (birthdayToday.length > 0) messages.push(`🎂🎉 ¡HOY es el cumpleaños de: ${birthdayToday.join(', ')}! 🎉🎂`);
+  if (birthdayTomorrow.length > 0) messages.push(`🎈 ¡Mañana cumple años: ${birthdayTomorrow.join(', ')}! 🎈`);
 
   if (messages.length === 0) {
     banner.classList.add('hidden');
@@ -936,15 +811,11 @@ function checkBirthdays(students) {
   banner.classList.remove('hidden');
 }
 
-// ==========================================
-// 8. INICIALIZACIÓN Y EVENTOS DE FORMULARIO
-// ==========================================
 updateAdminUI();
 
 onSnapshot(studentsCol, snapshot => {
   allStudents.length = 0;
   snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
-  render(allStudents);
   renderScheduleGrid(allStudents);
   renderSummaryByProfessor(allStudents);
   checkBirthdays(allStudents);
@@ -979,7 +850,10 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   document.getElementById("formTitle").textContent = "Agregar / editar alumno";
 });
 
-document.getElementById('search').addEventListener('input', () => render(allStudents));
+document.getElementById('search').addEventListener('input', () => {
+  renderScheduleGrid(allStudents);
+});
 </script>
 </body>
 </html>
+
