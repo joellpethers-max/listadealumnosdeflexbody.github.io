@@ -714,7 +714,7 @@ function renderScheduleGrid(visibleStudents) {
 
       const waLink = s.studentPhone ? 
         `https://wa.me/${s.studentPhone.replace(/\D/g,'')}?text=${encodeURIComponent(
-          'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
+          'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body fue ' + formatDateDDMMYYYY(s.dueDate || 'favor de reportarse con la actualizacion de su pago, en caso de continuar con el siguiente mes, muchas gracias.')
         )}` : '#';
 
       // El botón de Notificar por WhatsApp siempre está disponible para el profesor dueño y para joelitotiplisky@gmail.com
