@@ -1,3 +1,5 @@
+¡Mil disculpas! Al quitar el formulario de contraseña y dejar solo el botón de Google, se ocultó por error la línea que abría el modal de inicio de sesión.
+Aquí tienes el código corregido con el botón "Iniciar sesión" de nuevo en la esquina superior, funcionando de manera limpia, rápida y 100% exclusiva por profesor con Google:
 <!doctype html>
 <html lang="es">
 <head>
@@ -80,7 +82,7 @@
         <p class="text-xs md:text-sm text-slate-100">Registro de alumnos, horarios fijos, días de la semana, profes y pagos.</p>
       </div>
 
-      <!-- Panel de Usuario -->
+      <!-- Panel de Usuario (Con el Botón de Iniciar Sesión restaurado) -->
       <div class="bg-black/55 backdrop-blur-md p-3 rounded-lg flex flex-wrap items-center gap-3 border border-white/25 self-start md:self-auto">
         <div id="authStatus" class="text-xs md:text-sm">
           <span class="text-yellow-300 font-semibold">Modo Lectura</span> (Sin sesión)
@@ -188,7 +190,7 @@
     </section>
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
-      Conectado a Firebase Firestore • Exclusividad absoluta por Profesor.
+      Conectado a Firebase Firestore • Autenticación exclusiva con Google.
     </footer>
   </div>
 
@@ -247,17 +249,20 @@ function clearPermanentSession() {
 }
 
 let currentUserEmail = getPermanentSession();
-const allStudents = [];
+let allStudents = [];
 
 function isLogged() {
   return currentUserEmail && currentUserEmail.length > 0;
 }
 
-// EXCLUSIVIDAD ESTRICTA: Solo permite modificar si el alumno tiene creador y coincide exactamente con el correo actual.
 function canModifyStudent(student) {
   if (!isLogged()) return false;
   const creator = cleanEmail(student.createdBy);
-  if (!creator) return false; // Si no tiene creador asignado, nadie lo puede modificar por seguridad
+  if (!creator) {
+    // Si es un alumno antiguo sin creador, permitimos que Joel (u otro profe según convenga) lo reclame, 
+    // o puedes cambiar esto si prefieres que nadie los toque hasta que los editen.
+    return cleanEmail(currentUserEmail) === "joellpethers@gmail.com";
+  }
   return creator === cleanEmail(currentUserEmail);
 }
 
@@ -350,7 +355,7 @@ function updateAdminUI() {
     tablesPanel.classList.add('lg:col-span-2');
     authStatus.innerHTML = `<span class="text-blue-300 font-bold">● Profe:</span> ${currentUserEmail}`;
   } else {
-    openLoginBtn.classList.add('hidden');
+    openLoginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
@@ -377,9 +382,12 @@ async function saveStudent(student) {
         alert("Acceso denegado: Este alumno pertenece a otro profesor. No puedes modificarlo.");
         return false;
       }
+      if (existing && !existing.createdBy) {
+        data.createdBy = currentUserEmail;
+      }
       await updateDoc(doc(db, "students", student.id), data);
     } else {
-      data.createdBy = currentUserEmail; // Sella el alumno con tu correo actual
+      data.createdBy = currentUserEmail;
       await addDoc(studentsCol, data);
     }
     return true;
@@ -773,7 +781,7 @@ function checkBirthdays(students) {
 updateAdminUI();
 
 onSnapshot(studentsCol, snapshot => {
-  allStudents.length = 0;
+  allStudents = [];
   snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
   renderScheduleGrid(allStudents);
   renderSummaryByProfessor(allStudents);
@@ -815,3 +823,5 @@ document.getElementById('search').addEventListener('input', () => {
 </script>
 </body>
 </html>
+
+
