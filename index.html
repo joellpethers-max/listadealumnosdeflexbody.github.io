@@ -1,3 +1,8 @@
+El motivo por el cual los alumnos dejaron de aparecer es que al pegar el fragmento de ejemplo anterior dentro de renderScheduleGrid, quedaron tres variables que no existían en tu código original:
+ * condicion: No estaba definida (ReferenceError: condicion is not defined), lo que detenía por completo la ejecución de la tabla al intentar dibujar el primer alumno.
+ * mensajeWhatsApp vs waLink: La variable se llamó mensajeWhatsApp, pero más abajo el botón seguía buscando href="${waLink}" (ReferenceError: waLink is not defined).
+ * s.phone vs s.studentPhone: En tu base de datos el teléfono se guarda como s.studentPhone (además, se limpiaron los símbolos como el + o espacios con .replace(/\D/g, '') para que la API de WhatsApp abra directo tanto en la app de iOS/Android como en WhatsApp Web/Desktop).
+Aquí tienes el código completo, corregido y listo para copiar y pegar, manteniendo intacto tu mensaje de notificación y toda la estructura original:
 <!doctype html>
 <html lang="es">
 <head>
@@ -309,7 +314,7 @@ function isLogged() {
   return currentUserEmail && currentUserEmail.length > 0;
 }
 
-// Verifica si quien inició sesión es joelitotiplisky@gmail.com
+// Verifica si quien inició sesión es el correo supervisor
 function isGlobalViewer() {
   return isLogged() && cleanEmail(currentUserEmail) === cleanEmail(VIEWER_ALL_EMAIL);
 }
@@ -323,7 +328,7 @@ function getStudentOwner(student) {
 // Verifica si el usuario actual es dueño de este alumno y puede editarlo/renovarlo/eliminarlo
 function canModifyStudent(student) {
   if (!isLogged()) return false;
-  if (isGlobalViewer()) return false; // joelitotiplisky@gmail.com solo puede ver y notificar
+  if (isGlobalViewer()) return false; // El supervisor solo puede ver y notificar
   return getStudentOwner(student) === cleanEmail(currentUserEmail);
 }
 
@@ -331,7 +336,7 @@ function canModifyStudent(student) {
 function getVisibleStudents(students) {
   if (!isLogged()) return [];
   if (isGlobalViewer()) {
-    return students; // joelitotiplisky@gmail.com ve la lista completa de todos los profesores
+    return students; // El supervisor ve la lista completa de todos los profesores
   }
   // Cualquier otro profesor ve ÚNICAMENTE sus propios alumnos
   const myEmail = cleanEmail(currentUserEmail);
@@ -428,7 +433,7 @@ function updateAppView() {
   appContent.classList.remove('hidden');
 
   if (isGlobalViewer()) {
-    // Modo exclusivo para joelitotiplisky@gmail.com
+    // Modo exclusivo para el correo supervisor
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
     tablesPanel.classList.add('lg:col-span-3');
@@ -712,18 +717,20 @@ function renderScheduleGrid(visibleStudents) {
         return `<td class="border p-1.5 text-xs text-center ${cellColor}">${hasClass ? s.name : ''}</td>`;
       }).join('');
 
-      const mensajeWhatsApp = condicion 
-  ? `https://api.whatsapp.com/send?phone=${s.phone}&text=` + encodeURIComponent(
-      `Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body fue ${formatDateDDMMYYYY(s.dueDate)}, favor de reportarse con la actualización de su pago, en caso de continuar con el siguiente mes, muchas gracias.`
-    )
-  : '#';
+      // Limpiamos el teléfono para dejar solo números y asegurar compatibilidad con iOS, Android y PC
+      const cleanPhone = (s.studentPhone || '').replace(/\D/g, '');
+      const waLink = cleanPhone
+        ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=` + encodeURIComponent(
+            `Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body fue ${formatDateDDMMYYYY(s.dueDate)}, favor de reportarse con la actualización de su pago, en caso de continuar con el siguiente mes, muchas gracias.`
+          )
+        : '#';
 
-      // El botón de Notificar por WhatsApp siempre está disponible para el profesor dueño y para joelitotiplisky@gmail.com
+      // El botón de Notificar por WhatsApp siempre está disponible para el profesor dueño y para el supervisor
       let actionsButtons = `
-        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Notificar por WhatsApp">Notificar</a>
+        <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Notificar por WhatsApp">Notificar</a>
       `;
 
-      // Los botones de Renovar, Editar y Eliminar solo aparecen para el profesor dueño (NUNCA para joelitotiplisky@gmail.com)
+      // Los botones de Renovar, Editar y Eliminar solo aparecen para el profesor dueño
       if (canModifyStudent(s)) {
         actionsButtons += `
           <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
@@ -932,3 +939,4 @@ document.getElementById('search').addEventListener('input', () => {
 </script>
 </body>
 </html>
+
