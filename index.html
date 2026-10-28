@@ -1,5 +1,3 @@
-¡Mil disculpas! Al quitar el formulario de contraseña y dejar solo el botón de Google, se ocultó por error la línea que abría el modal de inicio de sesión.
-Aquí tienes el código corregido con el botón "Iniciar sesión" de nuevo en la esquina superior, funcionando de manera limpia, rápida y 100% exclusiva por profesor con Google:
 <!doctype html>
 <html lang="es">
 <head>
@@ -9,7 +7,7 @@ Aquí tienes el código corregido con el botón "Iniciar sesión" de nuevo en la
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Flex Body" />
-  <title>Lista de Alumnos del Equipo Flex Body</title>
+  <title>Equipo Flex Body — Gestión de Alumnos</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -25,14 +23,23 @@ Aquí tienes el código corregido con el botón "Iniciar sesión" de nuevo en la
     #bg-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.70) 0%, rgba(0, 0, 0, 0.45) 100%);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 0;
       pointer-events: none;
     }
-    .max-w-7xl { position: relative; z-index: 1; }
+    .app-layer { position: relative; z-index: 10; }
     
+    /* Animación flotante para la pantalla de bienvenida */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-float {
+      animation: floatSlow 3.5s ease-in-out infinite;
+    }
+
     /* Evita el auto-zoom en Safari iOS al tocar inputs */
     @media screen and (max-width: 768px) {
       input, select, textarea {
@@ -45,153 +52,195 @@ Aquí tienes el código corregido con el botón "Iniciar sesión" de nuevo en la
     }
   </style>
 </head>
-<body class="text-slate-800">
+<body class="text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
   <div id="bg-overlay"></div>
 
-  <!-- Banner de Cumpleaños (Hoy y Mañana) -->
-  <div id="birthdayBanner" class="hidden relative z-10 bg-red-600 text-white text-center py-3 px-4 font-semibold text-sm md:text-base shadow-lg"></div>
-
-  <!-- MODAL DE INICIO DE SESIÓN (Únicamente con Google) -->
-  <div id="loginModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative text-center">
-      <button id="closeModalBtn" type="button" class="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-2xl font-bold px-2 leading-none">&times;</button>
+  <!-- ========================================================================= -->
+  <!-- PANTALLA DE BIENVENIDA CREATIVA (Visible cuando no se ha iniciado sesión) -->
+  <!-- ========================================================================= -->
+  <div id="welcomeScreen" class="app-layer min-h-screen flex items-center justify-center p-4">
+    <div class="relative w-full max-w-md overflow-hidden rounded-3xl bg-slate-900/75 backdrop-blur-xl border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] p-8 text-center text-white">
       
-      <h3 class="text-lg font-bold text-slate-800 mb-1">Acceso Profesores</h3>
-      <p class="text-xs text-slate-500 mb-6">Inicia sesión con tu cuenta oficial de Google para registrar y administrar tus alumnos de forma segura.</p>
+      <!-- Luces decorativas de fondo -->
+      <div class=" -top-24 -left-24 w-48 h-48 bg-blue-500/30 rounded-full blur-3xl pointer-events-none absolute"></div>
+      <div class=" -bottom-24 -right-24 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none absolute"></div>
 
-      <!-- ÚNICO MÉTODO: BOTÓN GOOGLE -->
-      <button id="googleLoginBtn" type="button" class="w-full border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold py-3 px-4 rounded-lg text-sm shadow-sm transition flex items-center justify-center gap-2.5">
-        <svg class="w-5 h-5" viewBox="0 0 24 24">
+      <!-- Icono / Logo animado -->
+      <div class="mx-auto mb-5 w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-emerald-400 p-[2px] shadow-lg shadow-blue-500/30 animate-float">
+        <div class="w-full h-full bg-slate-950/90 rounded-[14px] flex items-center justify-center">
+          <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+          </svg>
+        </div>
+      </div>
+
+      <span class="inline-block px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-semibold tracking-wider uppercase text-emerald-300 mb-3">
+        Plataforma Oficial
+      </span>
+
+      <h1 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-200 bg-clip-text text-transparent mb-2">
+        Equipo Flex Body
+      </h1>
+      
+      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
+        Sistema inteligente de gestión de alumnos, asistencias, vencimientos y recordatorios para profesores.
+      </p>
+
+      <!-- Tarjetas informativas de privacidad -->
+      <div class="grid grid-cols-2 gap-2.5 text-left mb-7">
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div class="text-blue-400 font-bold text-xs mb-0.5">🔒 Espacio Privado</div>
+          <p class="text-[11px] text-slate-300 leading-tight">Cada profesor visualiza y administra únicamente sus propios alumnos.</p>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+          <div class="text-emerald-400 font-bold text-xs mb-0.5">⚡ Tiempo Real</div>
+          <p class="text-[11px] text-slate-300 leading-tight">Cuadrículas automáticas, alertas de cumpleaños y aviso por WhatsApp.</p>
+        </div>
+      </div>
+
+      <!-- Botón de Inicio con Google -->
+      <button id="googleLoginBtn" type="button" class="group relative w-full bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-900 font-bold py-3.5 px-5 rounded-xl text-sm shadow-xl shadow-black/30 transition-all flex items-center justify-center gap-3">
+        <svg class="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
           <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
           <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
         </svg>
-        Iniciar sesión con Google
+        <span>Iniciar sesión con Google</span>
       </button>
 
-      <p id="loginError" class="hidden text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded border border-red-200 mt-4 text-left"></p>
+      <p id="loginError" class="hidden text-xs text-red-300 font-medium bg-red-950/80 p-3 rounded-lg border border-red-500/40 mt-4 text-left"></p>
+
+      <p class="mt-6 text-[11px] text-slate-400">
+        Tu sesión quedará guardada automáticamente en este dispositivo.
+      </p>
     </div>
   </div>
-  
-  <div class="max-w-7xl mx-auto p-4 md:p-6">
-    <!-- Encabezado y Barra de Sesión -->
-    <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-white drop-shadow-md">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
-        <p class="text-xs md:text-sm text-slate-100">Registro de alumnos, horarios fijos, días de la semana, profes y pagos.</p>
-      </div>
 
-      <!-- Panel de Usuario (Con el Botón de Iniciar Sesión restaurado) -->
-      <div class="bg-black/55 backdrop-blur-md p-3 rounded-lg flex flex-wrap items-center gap-3 border border-white/25 self-start md:self-auto">
-        <div id="authStatus" class="text-xs md:text-sm">
-          <span class="text-yellow-300 font-semibold">Modo Lectura</span> (Sin sesión)
+  <!-- ========================================================================= -->
+  <!-- CONTENIDO DE LA APLICACIÓN (Visible solo después de iniciar sesión)       -->
+  <!-- ========================================================================= -->
+  <div id="appContent" class="hidden app-layer">
+    <!-- Banner de Cumpleaños (Hoy y Mañana) -->
+    <div id="birthdayBanner" class="hidden bg-red-600 text-white text-center py-3 px-4 font-semibold text-sm md:text-base shadow-lg"></div>
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+      <!-- Encabezado y Barra de Sesión -->
+      <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-white drop-shadow-md">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold">Lista de Alumnos del Equipo Flex Body</h1>
+          <p id="headerSubtitle" class="text-xs md:text-sm text-slate-100">Panel privado de gestión de alumnos, horarios fijos y pagos.</p>
         </div>
-        <button id="openLoginBtn" type="button" class="bg-white text-slate-800 hover:bg-slate-100 font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
-          Iniciar sesión
-        </button>
-        <button id="logoutBtn" type="button" class="hidden bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded text-xs md:text-sm shadow transition">
-          Cerrar sesión
-        </button>
-      </div>
-    </header>
 
-    <section id="mainGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Formulario -->
-      <div id="adminFormPanel" class="hidden lg:col-span-1 bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow h-fit border-2 border-blue-500">
-        <div class="flex items-center justify-between mb-3">
-          <h2 id="formTitle" class="font-bold text-lg text-slate-800">Agregar / editar alumno</h2>
-          <span class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-semibold">Profe Activo</span>
+        <!-- Panel de Usuario Activo -->
+        <div class="bg-black/60 backdrop-blur-md p-3 rounded-xl flex flex-wrap items-center gap-3 border border-white/25 self-start md:self-auto shadow-lg">
+          <div id="authStatus" class="text-xs md:text-sm"></div>
+          <button id="logoutBtn" type="button" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs md:text-sm shadow transition">
+            Cerrar sesión
+          </button>
         </div>
-        <form id="studentForm" class="space-y-3">
-          <input type="hidden" id="studentId" />
+      </header>
 
-          <label class="block">
-            <span class="text-sm font-medium">Nombre completo</span>
-            <input id="name" class="mt-1 block w-full border border-slate-300 rounded p-2" required />
-          </label>
+      <section id="mainGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Formulario (Visible para profesores; oculto para el correo supervisor) -->
+        <div id="adminFormPanel" class="hidden lg:col-span-1 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg h-fit border-2 border-blue-500">
+          <div class="flex items-center justify-between mb-3">
+            <h2 id="formTitle" class="font-bold text-lg text-slate-800">Agregar / editar alumno</h2>
+            <span class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-semibold">Mis Alumnos</span>
+          </div>
+          <form id="studentForm" class="space-y-3">
+            <input type="hidden" id="studentId" />
 
-          <label class="block">
-            <span class="text-sm font-medium">WhatsApp del alumno</span>
-            <input id="studentPhone" type="tel" class="mt-1 block w-full border border-slate-300 rounded p-2" placeholder="+595..." value="+595" />
-          </label>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             <label class="block">
-              <span class="text-sm font-medium">Fecha de inicio</span>
-              <input id="startDate" type="date" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              <span class="text-sm font-medium">Nombre completo</span>
+              <input id="name" class="mt-1 block w-full border border-slate-300 rounded p-2" required />
             </label>
 
             <label class="block">
-              <span class="text-sm font-medium">Fecha de próximo pago</span>
-              <input id="dueDate" type="date" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              <span class="text-sm font-medium">WhatsApp del alumno</span>
+              <input id="studentPhone" type="tel" class="mt-1 block w-full border border-slate-300 rounded p-2" placeholder="+595..." value="+595" />
             </label>
 
-            <label class="block">
-              <span class="text-sm font-medium">Cumpleaños</span>
-              <input type="date" id="birthday" class="mt-1 block w-full border border-slate-300 rounded p-2" />
-            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+              <label class="block">
+                <span class="text-sm font-medium">Fecha de inicio</span>
+                <input id="startDate" type="date" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-medium">Fecha de próximo pago</span>
+                <input id="dueDate" type="date" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-medium">Cumpleaños</span>
+                <input type="date" id="birthday" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              </label>
+            </div>
+
+            <div>
+              <span class="text-sm font-semibold">Días de clase</span>
+              <div class="flex flex-wrap gap-2.5 mt-2">
+                <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Lun" class="dayCheckbox mr-1.5"/>Lun</label>
+                <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Mar" class="dayCheckbox mr-1.5"/>Mar</label>
+                <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Mié" class="dayCheckbox mr-1.5"/>Mié</label>
+                <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Jue" class="dayCheckbox mr-1.5"/>Jue</label>
+                <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Vie" class="dayCheckbox mr-1.5"/>Vie</label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+              <label class="block">
+                <span class="text-sm font-medium">Horario fijo</span>
+                <input type="time" id="fixedTime" class="mt-1 block w-full border border-slate-300 rounded p-2" />
+              </label>
+
+              <label class="block">
+                <span class="text-sm font-medium">Profesor</span>
+                <input type="text" id="fixedProf" class="mt-1 block w-full border border-slate-300 rounded p-2" placeholder="Nombre del profe" required />
+              </label>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <button type="submit" id="saveBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded font-semibold flex-1 shadow">Guardar</button>
+              <button type="button" id="clearBtn" class="border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2.5 rounded font-medium">Limpiar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Panel Principal de Cuadrículas y Resumen -->
+        <div id="tablesPanel" class="lg:col-span-2 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-lg">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
+            <div>
+              <h2 id="gridSectionTitle" class="font-semibold text-lg">Mis cuadrículas de asistencia</h2>
+              <p id="gridSectionDesc" class="text-xs text-slate-500">Solo se muestran los alumnos registrados con tu correo.</p>
+            </div>
+            <input id="search" placeholder="Buscar por nombre, profe, día, estado..." class="border border-slate-300 p-2 rounded-lg w-full sm:w-80" />
           </div>
 
           <div>
-            <span class="text-sm font-semibold">Días de clase</span>
-            <div class="flex flex-wrap gap-2.5 mt-2">
-              <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Lun" class="dayCheckbox mr-1.5"/>Lun</label>
-              <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Mar" class="dayCheckbox mr-1.5"/>Mar</label>
-              <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Mié" class="dayCheckbox mr-1.5"/>Mié</label>
-              <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Jue" class="dayCheckbox mr-1.5"/>Jue</label>
-              <label class="inline-flex items-center bg-slate-100 border px-2.5 py-1.5 rounded cursor-pointer"><input type="checkbox" value="Vie" class="dayCheckbox mr-1.5"/>Vie</label>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <h3 class="font-semibold text-base">Horarios fijos</h3>
+              <div class="flex flex-wrap gap-3 text-xs">
+                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-green-200 border inline-block"></span> Al día</span>
+                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-yellow-300 border inline-block"></span> Alumno Vencido</span>
+                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-red-400 border inline-block"></span> Cupo lleno (13)</span>
+              </div>
             </div>
+            <div class="overflow-x-auto" id="scheduleContainer"></div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-            <label class="block">
-              <span class="text-sm font-medium">Horario fijo</span>
-              <input type="time" id="fixedTime" class="mt-1 block w-full border border-slate-300 rounded p-2" />
-            </label>
-
-            <label class="block">
-              <span class="text-sm font-medium">Profesor</span>
-              <input type="text" id="fixedProf" class="mt-1 block w-full border border-slate-300 rounded p-2" placeholder="Nombre del profe" />
-            </label>
+          <div class="mt-8 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow border" id="summaryContainer">
+            <h3 class="font-semibold mb-2 text-base">Resumen por profesor (alumnos al día / aviso de pago)</h3>
+            <div id="summaryContent" class="text-sm"></div>
           </div>
-
-          <div class="flex gap-2 pt-2">
-            <button type="submit" id="saveBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded font-semibold flex-1 shadow">Guardar</button>
-            <button type="button" id="clearBtn" class="border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2.5 rounded font-medium">Limpiar</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Panel Principal -->
-      <div id="tablesPanel" class="lg:col-span-3 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
-          <h2 class="font-semibold text-lg">Cuadrículas de asistencia por profesor</h2>
-          <input id="search" placeholder="Buscar por nombre, profe, día, estado..." class="border border-slate-300 p-2 rounded w-full sm:w-80" />
         </div>
+      </section>
 
-        <div>
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <h3 class="font-semibold text-base">Horarios fijos</h3>
-            <div class="flex flex-wrap gap-3 text-xs">
-              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-green-200 border inline-block"></span> Al día</span>
-              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-yellow-300 border inline-block"></span> Alumno Vencido</span>
-              <span class="inline-flex items-center gap-1"><span class="w-3 h-3 bg-red-400 border inline-block"></span> Cupo lleno (13)</span>
-            </div>
-          </div>
-          <div class="overflow-x-auto" id="scheduleContainer"></div>
-        </div>
-
-        <div class="mt-8 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow border" id="summaryContainer">
-          <h3 class="font-semibold mb-2 text-base">Resumen por profesor (alumnos al día / aviso de pago)</h3>
-          <div id="summaryContent" class="text-sm"></div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
-      Conectado a Firebase Firestore • Autenticación exclusiva con Google.
-    </footer>
+      <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
+        Conectado a Firebase Firestore • Privacidad por Profesor activa.
+      </footer>
+    </div>
   </div>
 
 <script type="module">
@@ -218,7 +267,12 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 const studentsCol = collection(db, "students");
 
-const STORAGE_KEY = "flexbody_strict_prof_v2";
+// =========================================================
+// CONFIGURACIÓN DE ROLES Y PRIVACIDAD
+// =========================================================
+const VIEWER_ALL_EMAIL = "joelitotiplisky@gmail.com"; // Ve todo de todos los profes, pero solo puede Notificar (sin editar/borrar/agregar)
+const LEGACY_OWNER_EMAIL = "joellpethers@gmail.com";  // Propietario de los alumnos antiguos que fueron cargados sin campo createdBy
+const STORAGE_KEY = "flexbody_strict_prof_v3";
 
 function cleanEmail(str) {
   return (str || "").toString().replace(/\s+/g, "").toLowerCase();
@@ -255,17 +309,38 @@ function isLogged() {
   return currentUserEmail && currentUserEmail.length > 0;
 }
 
-function canModifyStudent(student) {
-  if (!isLogged()) return false;
-  const creator = cleanEmail(student.createdBy);
-  if (!creator) {
-    // Si es un alumno antiguo sin creador, permitimos que Joel (u otro profe según convenga) lo reclame, 
-    // o puedes cambiar esto si prefieres que nadie los toque hasta que los editen.
-    return cleanEmail(currentUserEmail) === "joellpethers@gmail.com";
-  }
-  return creator === cleanEmail(currentUserEmail);
+// Verifica si quien inició sesión es joelitotiplisky@gmail.com
+function isGlobalViewer() {
+  return isLogged() && cleanEmail(currentUserEmail) === cleanEmail(VIEWER_ALL_EMAIL);
 }
 
+// Obtiene el dueño real del alumno (si era un registro viejo sin createdBy, pertenece a joellpethers@gmail.com)
+function getStudentOwner(student) {
+  const creator = cleanEmail(student.createdBy);
+  return creator || cleanEmail(LEGACY_OWNER_EMAIL);
+}
+
+// Verifica si el usuario actual es dueño de este alumno y puede editarlo/renovarlo/eliminarlo
+function canModifyStudent(student) {
+  if (!isLogged()) return false;
+  if (isGlobalViewer()) return false; // joelitotiplisky@gmail.com solo puede ver y notificar
+  return getStudentOwner(student) === cleanEmail(currentUserEmail);
+}
+
+// Devuelve únicamente los alumnos que el usuario actual tiene permiso de VER
+function getVisibleStudents(students) {
+  if (!isLogged()) return [];
+  if (isGlobalViewer()) {
+    return students; // joelitotiplisky@gmail.com ve la lista completa de todos los profesores
+  }
+  // Cualquier otro profesor ve ÚNICAMENTE sus propios alumnos
+  const myEmail = cleanEmail(currentUserEmail);
+  return students.filter(s => getStudentOwner(s) === myEmail);
+}
+
+// ==========================================
+// FUNCIONES DE FECHA LOCAL
+// ==========================================
 function getLocalTodayStr() {
   const now = new Date();
   const year = now.getFullYear();
@@ -295,17 +370,10 @@ function addOneMonthLocal(dateStr) {
   return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
 }
 
-const loginModal = document.getElementById('loginModal');
+// ==========================================
+// AUTENTICACIÓN CON GOOGLE
+// ==========================================
 const loginError = document.getElementById('loginError');
-
-document.getElementById('openLoginBtn').addEventListener('click', () => {
-  loginError.classList.add('hidden');
-  loginModal.classList.remove('hidden');
-});
-
-document.getElementById('closeModalBtn').addEventListener('click', () => {
-  loginModal.classList.add('hidden');
-});
 
 document.getElementById('googleLoginBtn').addEventListener('click', async () => {
   loginError.classList.add('hidden');
@@ -314,12 +382,11 @@ document.getElementById('googleLoginBtn').addEventListener('click', async () => 
     if (result && result.user && result.user.email) {
       currentUserEmail = cleanEmail(result.user.email);
       savePermanentSession(currentUserEmail);
-      loginModal.classList.add('hidden');
-      updateAdminUI();
+      updateAppView();
     }
   } catch (err) {
     console.warn("Aviso Google Popup:", err);
-    loginError.innerHTML = `No se pudo abrir la ventana de Google. Verifica que los popups no estén bloqueados en tu navegador.`;
+    loginError.innerHTML = `No se pudo completar el inicio con Google. Verifica que las ventanas emergentes estén permitidas.`;
     loginError.classList.remove('hidden');
   }
 });
@@ -328,48 +395,68 @@ onAuthStateChanged(auth, (user) => {
   if (user && user.email) {
     currentUserEmail = cleanEmail(user.email);
     savePermanentSession(currentUserEmail);
-    updateAdminUI();
+    updateAppView();
   }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  if (!confirm("¿Seguro que deseas cerrar sesión?")) return;
+  if (!confirm("¿Seguro que deseas cerrar tu sesión?")) return;
   currentUserEmail = null;
   clearPermanentSession();
   try { await signOut(auth); } catch (e) {}
-  updateAdminUI();
+  updateAppView();
 });
 
-function updateAdminUI() {
+function updateAppView() {
+  const welcomeScreen = document.getElementById('welcomeScreen');
+  const appContent = document.getElementById('appContent');
   const adminPanel = document.getElementById('adminFormPanel');
   const tablesPanel = document.getElementById('tablesPanel');
   const authStatus = document.getElementById('authStatus');
-  const openLoginBtn = document.getElementById('openLoginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
+  const gridSectionTitle = document.getElementById('gridSectionTitle');
+  const gridSectionDesc = document.getElementById('gridSectionDesc');
 
-  if (isLogged()) {
-    openLoginBtn.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-    adminPanel.classList.remove('hidden');
-    tablesPanel.classList.remove('lg:col-span-3');
-    tablesPanel.classList.add('lg:col-span-2');
-    authStatus.innerHTML = `<span class="text-blue-300 font-bold">● Profe:</span> ${currentUserEmail}`;
-  } else {
-    openLoginBtn.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
+  // Si no ha iniciado sesión, mostrar solo el cartel de bienvenida de Flex Body
+  if (!isLogged()) {
+    welcomeScreen.classList.remove('hidden');
+    appContent.classList.add('hidden');
+    return;
+  }
+
+  // Si ya inició sesión, ocultar bienvenida y mostrar la aplicación
+  welcomeScreen.classList.add('hidden');
+  appContent.classList.remove('hidden');
+
+  if (isGlobalViewer()) {
+    // Modo exclusivo para joelitotiplisky@gmail.com
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
     tablesPanel.classList.add('lg:col-span-3');
-    authStatus.innerHTML = `<span class="text-yellow-300 font-semibold">Modo Lectura</span> (Inicia sesión para anotar alumnos)`;
+    authStatus.innerHTML = `<span class="text-emerald-300 font-bold">👁️ Vista General (Todos los Profes):</span> ${currentUserEmail}`;
+    gridSectionTitle.textContent = "Cuadrículas generales de todos los profesores";
+    gridSectionDesc.textContent = "Modo supervisión activa: Puedes ver a todos los alumnos y enviar avisos por WhatsApp.";
+  } else {
+    // Modo Profesor normal: ve y edita solo sus propios alumnos
+    adminPanel.classList.remove('hidden');
+    tablesPanel.classList.remove('lg:col-span-3');
+    tablesPanel.classList.add('lg:col-span-2');
+    authStatus.innerHTML = `<span class="text-blue-300 font-bold">● Profesor Activo:</span> ${currentUserEmail}`;
+    gridSectionTitle.textContent = "Mis cuadrículas de asistencia";
+    gridSectionDesc.textContent = `Mostrando exclusivamente los alumnos registrados por ${currentUserEmail}.`;
   }
 
-  renderScheduleGrid(allStudents);
-  renderSummaryByProfessor(allStudents);
+  const visibleStudents = getVisibleStudents(allStudents);
+  renderScheduleGrid(visibleStudents);
+  renderSummaryByProfessor(visibleStudents);
+  checkBirthdays(visibleStudents);
 }
 
+// ==========================================
+// ABM DE ALUMNOS (Protegido por Profesor)
+// ==========================================
 async function saveStudent(student) {
-  if (!isLogged()) {
-    alert("Debes iniciar sesión con Google para guardar alumnos.");
+  if (!isLogged() || isGlobalViewer()) {
+    alert("No tienes permisos de edición.");
     return false;
   }
   const data = { ...student };
@@ -378,11 +465,11 @@ async function saveStudent(student) {
   try {
     if (student.id) {
       const existing = allStudents.find(s => s.id === student.id);
-      if (existing && !canModifyStudent(existing)) {
-        alert("Acceso denegado: Este alumno pertenece a otro profesor. No puedes modificarlo.");
+      if (!existing || !canModifyStudent(existing)) {
+        alert("Acceso denegado: Solo puedes editar tus propios alumnos.");
         return false;
       }
-      if (existing && !existing.createdBy) {
+      if (!existing.createdBy) {
         data.createdBy = currentUserEmail;
       }
       await updateDoc(doc(db, "students", student.id), data);
@@ -398,12 +485,10 @@ async function saveStudent(student) {
 }
 
 async function deleteStudentFirebase(id) {
-  if (!isLogged()) return;
+  if (!isLogged() || isGlobalViewer()) return;
   const student = allStudents.find(s => s.id === id);
-  if (!student) return;
-
-  if (!canModifyStudent(student)) {
-    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
+  if (!student || !canModifyStudent(student)) {
+    alert("Acceso denegado: No puedes eliminar este alumno.");
     return;
   }
 
@@ -416,12 +501,10 @@ async function deleteStudentFirebase(id) {
 }
 
 function editStudentById(id) {
-  if (!isLogged()) return;
+  if (!isLogged() || isGlobalViewer()) return;
   const s = allStudents.find(item => item.id === id);
-  if (!s) return;
-
-  if (!canModifyStudent(s)) {
-    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
+  if (!s || !canModifyStudent(s)) {
+    alert("Acceso denegado: No puedes editar este alumno.");
     return;
   }
 
@@ -445,12 +528,10 @@ function editStudentById(id) {
 }
 
 async function renewStudent(id, currentDate) {
-  if (!isLogged()) return;
+  if (!isLogged() || isGlobalViewer()) return;
   const s = allStudents.find(item => item.id === id);
-  if (!s) return;
-
-  if (!canModifyStudent(s)) {
-    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
+  if (!s || !canModifyStudent(s)) {
+    alert("Acceso denegado: No puedes renovar este alumno.");
     return;
   }
 
@@ -473,6 +554,9 @@ document.addEventListener('click', (ev) => {
   if (deleteBtn) { ev.preventDefault(); deleteStudentFirebase(deleteBtn.dataset.id); return; }
 });
 
+// ==========================================
+// BUSCADOR AVANZADO
+// ==========================================
 function normalizeText(text) {
   if (!text) return '';
   return text.toString().toLowerCase()
@@ -531,9 +615,9 @@ function advancedSearch(students, searchTerm) {
 }
 
 // =========================================================
-// TABLILLAS SEMANALES
+// TABLILLAS SEMANALES (Filtradas por privacidad de cuenta)
 // =========================================================
-function renderScheduleGrid(students) {
+function renderScheduleGrid(visibleStudents) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
   const CLASS_LIMIT = 13;
   const container = document.getElementById('scheduleContainer');
@@ -541,7 +625,7 @@ function renderScheduleGrid(students) {
   const hoy = getLocalTodayStr();
   const searchTerm = document.getElementById('search').value;
 
-  const filteredStudents = advancedSearch(students, searchTerm);
+  const filteredStudents = advancedSearch(visibleStudents, searchTerm);
 
   const gridMap = {};
   filteredStudents.forEach(s => {
@@ -560,7 +644,10 @@ function renderScheduleGrid(students) {
   });
 
   if (sortedKeys.length === 0) {
-    container.innerHTML = `<div class="p-6 text-center text-slate-500 bg-white rounded-lg border">No se encontraron alumnos con ese criterio de búsqueda.</div>`;
+    const emptyMsg = visibleStudents.length === 0
+      ? "Aún no tienes alumnos registrados en tu cuenta. Usa el formulario para agregar tu primer alumno."
+      : "No se encontraron alumnos con ese criterio de búsqueda.";
+    container.innerHTML = `<div class="p-6 text-center text-slate-500 bg-white rounded-lg border">${emptyMsg}</div>`;
     return;
   }
 
@@ -571,7 +658,7 @@ function renderScheduleGrid(students) {
 
     const dayCounts = {};
     days.forEach(d => {
-      dayCounts[d] = students.filter(s => s.prof && s.prof.trim() === prof.trim() && s.time === timeBase && (s.days || []).includes(d)).length;
+      dayCounts[d] = visibleStudents.filter(s => s.prof && s.prof.trim() === prof.trim() && s.time === timeBase && (s.days || []).includes(d)).length;
     });
 
     const wrapper = document.createElement('div');
@@ -581,7 +668,7 @@ function renderScheduleGrid(students) {
     profTitle.className = 'bg-slate-800 text-white px-3 py-2 font-semibold text-sm flex justify-between items-center';
     profTitle.innerHTML = `
       <span>Profesor: ${prof} — Horario: ${timeBase} hs</span>
-      <span class="text-xs bg-slate-700 px-2 py-0.5 rounded">${profStudents.length} alumnos mostrados</span>
+      <span class="text-xs bg-slate-700 px-2 py-0.5 rounded">${profStudents.length} alumnos</span>
     `;
 
     const table = document.createElement('table');
@@ -630,10 +717,12 @@ function renderScheduleGrid(students) {
           'Muy buenas, paso a recordarle que su fecha de vencimiento de Flex Body es ' + formatDateDDMMYYYY(s.dueDate || '')
         )}` : '#';
 
+      // El botón de Notificar por WhatsApp siempre está disponible para el profesor dueño y para joelitotiplisky@gmail.com
       let actionsButtons = `
-        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Enviar WhatsApp">WhatsApp</a>
+        <a href="${waLink}" target="_blank" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Notificar por WhatsApp">Notificar</a>
       `;
 
+      // Los botones de Renovar, Editar y Eliminar solo aparecen para el profesor dueño (NUNCA para joelitotiplisky@gmail.com)
       if (canModifyStudent(s)) {
         actionsButtons += `
           <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
@@ -668,20 +757,30 @@ function renderScheduleGrid(students) {
   });
 }
 
-function renderSummaryByProfessor(students) {
+// ==========================================
+// RESUMEN POR PROFESOR (Filtrado por privacidad)
+// ==========================================
+function renderSummaryByProfessor(visibleStudents) {
   const hoy = getLocalTodayStr();
   const summaryContainer = document.getElementById("summaryContent");
   summaryContainer.innerHTML = '';
 
   const profMap = {};
-  students.forEach(s => {
+  visibleStudents.forEach(s => {
     if (!s.prof || !s.name) return;
     const profKey = s.prof.trim();
     if (!profMap[profKey]) profMap[profKey] = new Map();
     if (!profMap[profKey].has(s.name)) profMap[profKey].set(s.name, s);
   });
 
-  Object.keys(profMap).sort((a,b) => a.localeCompare(b, 'es', {sensitivity: 'base'})).forEach(prof => {
+  const profKeys = Object.keys(profMap).sort((a,b) => a.localeCompare(b, 'es', {sensitivity: 'base'}));
+
+  if (profKeys.length === 0) {
+    summaryContainer.innerHTML = '<p class="text-slate-400">Sin alumnos para resumir.</p>';
+    return;
+  }
+
+  profKeys.forEach(prof => {
     const list = Array.from(profMap[prof].values());
 
     list.sort((a, b) => {
@@ -718,7 +817,7 @@ function renderSummaryByProfessor(students) {
         e.preventDefault();
         const searchField = document.getElementById('search');
         searchField.value = s.name;
-        renderScheduleGrid(allStudents);
+        renderScheduleGrid(getVisibleStudents(allStudents));
         setTimeout(() => {
           searchField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
@@ -743,7 +842,10 @@ function renderSummaryByProfessor(students) {
   });
 }
 
-function checkBirthdays(students) {
+// ==========================================
+// BANNER DE CUMPLEAÑOS (Solo de alumnos visibles)
+// ==========================================
+function checkBirthdays(visibleStudents) {
   const today = new Date();
   const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -753,7 +855,7 @@ function checkBirthdays(students) {
   const birthdayToday = [];
   const birthdayTomorrow = [];
 
-  students.forEach(s => {
+  visibleStudents.forEach(s => {
     if (!s.birthday) return;
     const parts = s.birthday.split('-');
     if (parts.length < 3) return;
@@ -778,14 +880,20 @@ function checkBirthdays(students) {
   banner.classList.remove('hidden');
 }
 
-updateAdminUI();
+// ==========================================
+// INICIALIZACIÓN Y EVENTOS
+// ==========================================
+updateAppView();
 
 onSnapshot(studentsCol, snapshot => {
   allStudents = [];
   snapshot.forEach(docu => allStudents.push({ id: docu.id, ...docu.data() }));
-  renderScheduleGrid(allStudents);
-  renderSummaryByProfessor(allStudents);
-  checkBirthdays(allStudents);
+  if (isLogged()) {
+    const visibleStudents = getVisibleStudents(allStudents);
+    renderScheduleGrid(visibleStudents);
+    renderSummaryByProfessor(visibleStudents);
+    checkBirthdays(visibleStudents);
+  }
 });
 
 document.getElementById("studentForm").addEventListener("submit", async ev => {
@@ -818,10 +926,8 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 });
 
 document.getElementById('search').addEventListener('input', () => {
-  renderScheduleGrid(allStudents);
+  renderScheduleGrid(getVisibleStudents(allStudents));
 });
 </script>
 </body>
 </html>
-
-
