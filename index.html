@@ -188,7 +188,7 @@
     </section>
 
     <footer class="mt-6 text-xs text-slate-100 drop-shadow text-center md:text-left">
-      Conectado a Firebase Firestore • Autenticación exclusiva con Google.
+      Conectado a Firebase Firestore • Exclusividad absoluta por Profesor.
     </footer>
   </div>
 
@@ -216,7 +216,7 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 const studentsCol = collection(db, "students");
 
-const STORAGE_KEY = "flexbody_strict_prof_v1";
+const STORAGE_KEY = "flexbody_strict_prof_v2";
 
 function cleanEmail(str) {
   return (str || "").toString().replace(/\s+/g, "").toLowerCase();
@@ -253,10 +253,11 @@ function isLogged() {
   return currentUserEmail && currentUserEmail.length > 0;
 }
 
+// EXCLUSIVIDAD ESTRICTA: Solo permite modificar si el alumno tiene creador y coincide exactamente con el correo actual.
 function canModifyStudent(student) {
   if (!isLogged()) return false;
   const creator = cleanEmail(student.createdBy);
-  if (!creator) return true;
+  if (!creator) return false; // Si no tiene creador asignado, nadie lo puede modificar por seguridad
   return creator === cleanEmail(currentUserEmail);
 }
 
@@ -349,7 +350,7 @@ function updateAdminUI() {
     tablesPanel.classList.add('lg:col-span-2');
     authStatus.innerHTML = `<span class="text-blue-300 font-bold">● Profe:</span> ${currentUserEmail}`;
   } else {
-    openLoginBtn.classList.remove('hidden');
+    openLoginBtn.classList.add('hidden');
     logoutBtn.classList.add('hidden');
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
@@ -373,15 +374,12 @@ async function saveStudent(student) {
     if (student.id) {
       const existing = allStudents.find(s => s.id === student.id);
       if (existing && !canModifyStudent(existing)) {
-        alert("Acceso denegado: Este alumno fue registrado por otro profesor. No puedes modificarlo.");
+        alert("Acceso denegado: Este alumno pertenece a otro profesor. No puedes modificarlo.");
         return false;
-      }
-      if (existing && !existing.createdBy) {
-        data.createdBy = currentUserEmail;
       }
       await updateDoc(doc(db, "students", student.id), data);
     } else {
-      data.createdBy = currentUserEmail;
+      data.createdBy = currentUserEmail; // Sella el alumno con tu correo actual
       await addDoc(studentsCol, data);
     }
     return true;
@@ -397,7 +395,7 @@ async function deleteStudentFirebase(id) {
   if (!student) return;
 
   if (!canModifyStudent(student)) {
-    alert("Acceso denegado: Este alumno fue registrado por otro profesor.");
+    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
     return;
   }
 
@@ -415,7 +413,7 @@ function editStudentById(id) {
   if (!s) return;
 
   if (!canModifyStudent(s)) {
-    alert("Acceso denegado: Este alumno fue registrado por otro profesor.");
+    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
     return;
   }
 
@@ -444,7 +442,7 @@ async function renewStudent(id, currentDate) {
   if (!s) return;
 
   if (!canModifyStudent(s)) {
-    alert("Acceso denegado: Este alumno fue registrado por otro profesor.");
+    alert("Acceso denegado: Este alumno pertenece a otro profesor.");
     return;
   }
 
@@ -817,4 +815,3 @@ document.getElementById('search').addEventListener('input', () => {
 </script>
 </body>
 </html>
-
