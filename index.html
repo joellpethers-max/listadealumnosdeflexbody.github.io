@@ -142,7 +142,7 @@
       </header>
 
       <section id="mainGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Formulario (Visible para profesores; oculto para el correo supervisor) -->
+        <!-- Formulario (Visible para profesores; oculto para Raquel) -->
         <div id="adminFormPanel" class="hidden lg:col-span-1 bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg h-fit border-2 border-blue-500">
           <div class="flex items-center justify-between mb-3">
             <h2 id="formTitle" class="font-bold text-lg text-slate-800">Agregar / editar alumno</h2>
@@ -270,8 +270,8 @@ const studentsCol = collection(db, "students");
 // =========================================================
 // CONFIGURACIÓN DE ROLES Y PRIVACIDAD
 // =========================================================
-const VIEWER_ALL_EMAIL = "raquelconcepcionferreira@gmail.com"; // Ve todo de todos los profes, pero solo puede Notificar (sin editar/borrar/agregar)
-const LEGACY_OWNER_EMAIL = "joellpethers@gmail.com";  // Propietario de los alumnos antiguos que fueron cargados sin campo createdBy
+const VIEWER_ALL_EMAIL = "raquelconcepcionferreira@gmail.com"; // Ve todo de todos, puede Notificar y Renovar
+const LEGACY_OWNER_EMAIL = "joellpethers@gmail.com";  // Propietario de los alumnos antiguos sin createdBy
 const STORAGE_KEY = "flexbody_strict_prof_v3";
 
 function cleanEmail(str) {
@@ -309,31 +309,37 @@ function isLogged() {
   return currentUserEmail && currentUserEmail.length > 0;
 }
 
-// Verifica si quien inició sesión es el correo supervisor
+// Verifica si quien inició sesión es Raquel
 function isGlobalViewer() {
   return isLogged() && cleanEmail(currentUserEmail) === cleanEmail(VIEWER_ALL_EMAIL);
 }
 
-// Obtiene el dueño real del alumno (si era un registro viejo sin createdBy, pertenece a joellpethers@gmail.com)
+// Obtiene el dueño real del alumno
 function getStudentOwner(student) {
   const creator = cleanEmail(student.createdBy);
   return creator || cleanEmail(LEGACY_OWNER_EMAIL);
 }
 
-// Verifica si el usuario actual es dueño de este alumno y puede editarlo/renovarlo/eliminarlo
+// Verifica si el profesor actual es dueño estricto de este alumno para editar o eliminar
 function canModifyStudent(student) {
   if (!isLogged()) return false;
-  if (isGlobalViewer()) return false; // El supervisor solo puede ver y notificar
+  if (isGlobalViewer()) return false; // Raquel no edita ni elimina directamente
   return getStudentOwner(student) === cleanEmail(currentUserEmail);
 }
 
-// Devuelve únicamente los alumnos que el usuario actual tiene permiso de VER
+// Raquel puede renovar cualquier alumno; los profesores solo sus propios alumnos
+function canRenewStudent(student) {
+  if (!isLogged()) return false;
+  if (isGlobalViewer()) return true; // Raquel tiene permiso de renovar a cualquiera
+  return getStudentOwner(student) === cleanEmail(currentUserEmail);
+}
+
+// Devuelve únicamente los alumnos que el usuario actual tiene permiso de ver
 function getVisibleStudents(students) {
   if (!isLogged()) return [];
   if (isGlobalViewer()) {
-    return students; // El supervisor ve la lista completa de todos los profesores
+    return students; // Raquel ve la lista completa de todos los profesores
   }
-  // Cualquier otro profesor ve ÚNICAMENTE sus propios alumnos
   const myEmail = cleanEmail(currentUserEmail);
   return students.filter(s => getStudentOwner(s) === myEmail);
 }
@@ -416,27 +422,23 @@ function updateAppView() {
   const gridSectionTitle = document.getElementById('gridSectionTitle');
   const gridSectionDesc = document.getElementById('gridSectionDesc');
 
-  // Si no ha iniciado sesión, mostrar solo el cartel de bienvenida de Flex Body
   if (!isLogged()) {
     welcomeScreen.classList.remove('hidden');
     appContent.classList.add('hidden');
     return;
   }
 
-  // Si ya inició sesión, ocultar bienvenida y mostrar la aplicación
   welcomeScreen.classList.add('hidden');
   appContent.classList.remove('hidden');
 
   if (isGlobalViewer()) {
-    // Modo exclusivo para el correo supervisor
     adminPanel.classList.add('hidden');
     tablesPanel.classList.remove('lg:col-span-2');
     tablesPanel.classList.add('lg:col-span-3');
-    authStatus.innerHTML = `<span class="text-emerald-300 font-bold">👁️ Vista General (Todos los Profes):</span> ${currentUserEmail}`;
+    authStatus.innerHTML = `<span class="text-emerald-300 font-bold">👁️ Vista General (Supervisión):</span> ${currentUserEmail}`;
     gridSectionTitle.textContent = "Cuadrículas generales de todos los profesores";
-    gridSectionDesc.textContent = "Modo supervisión activa: Puedes ver a todos los alumnos y enviar avisos por WhatsApp.";
+    gridSectionDesc.textContent = "Modo supervisión activa: Puedes ver a todos los alumnos, notificar por WhatsApp y renovar pagos.";
   } else {
-    // Modo Profesor normal: ve y edita solo sus propios alumnos
     adminPanel.classList.remove('hidden');
     tablesPanel.classList.remove('lg:col-span-3');
     tablesPanel.classList.add('lg:col-span-2');
@@ -452,7 +454,7 @@ function updateAppView() {
 }
 
 // ==========================================
-// ABM DE ALUMNOS (Protegido por Profesor)
+// ABM DE ALUMNOS
 // ==========================================
 async function saveStudent(student) {
   if (!isLogged() || isGlobalViewer()) {
@@ -528,10 +530,10 @@ function editStudentById(id) {
 }
 
 async function renewStudent(id, currentDate) {
-  if (!isLogged() || isGlobalViewer()) return;
+  if (!isLogged()) return;
   const s = allStudents.find(item => item.id === id);
-  if (!s || !canModifyStudent(s)) {
-    alert("Acceso denegado: No puedes renovar este alumno.");
+  if (!s || !canRenewStudent(s)) {
+    alert("Acceso denegado: No tienes permisos para renovar este alumno.");
     return;
   }
 
@@ -539,7 +541,7 @@ async function renewStudent(id, currentDate) {
   const nuevaStr = addOneMonthLocal(baseDate);
   try {
     await updateDoc(doc(db, "students", id), { dueDate: nuevaStr });
-    alert(`Fecha de próximo pago renovada al: ${formatDateDDMMYYYY(nuevaStr)}`);
+    alert(`Fecha de próximo pago de ${s.name} renovada al: ${formatDateDDMMYYYY(nuevaStr)}`);
   } catch (err) {
     alert("Error al renovar: " + err.message);
   }
@@ -615,7 +617,7 @@ function advancedSearch(students, searchTerm) {
 }
 
 // =========================================================
-// TABLILLAS SEMANALES (Filtradas por privacidad de cuenta)
+// TABLILLAS SEMANALES
 // =========================================================
 function renderScheduleGrid(visibleStudents) {
   const days = ['Lun','Mar','Mié','Jue','Vie'];
@@ -645,7 +647,7 @@ function renderScheduleGrid(visibleStudents) {
 
   if (sortedKeys.length === 0) {
     const emptyMsg = visibleStudents.length === 0
-      ? "Aún no tienes alumnos registrados en tu cuenta. Usa el formulario para agregar tu primer alumno."
+      ? "Aún no hay alumnos registrados. Usa el formulario para agregar tu primer alumno."
       : "No se encontraron alumnos con ese criterio de búsqueda.";
     container.innerHTML = `<div class="p-6 text-center text-slate-500 bg-white rounded-lg border">${emptyMsg}</div>`;
     return;
@@ -712,7 +714,6 @@ function renderScheduleGrid(visibleStudents) {
         return `<td class="border p-1.5 text-xs text-center ${cellColor}">${hasClass ? s.name : ''}</td>`;
       }).join('');
 
-      // Limpiamos el teléfono para dejar solo números y asegurar compatibilidad con iOS, Android y PC
       const cleanPhone = (s.studentPhone || '').replace(/\D/g, '');
       const waLink = cleanPhone
         ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=` + encodeURIComponent(
@@ -720,15 +721,20 @@ function renderScheduleGrid(visibleStudents) {
           )
         : '#';
 
-      // El botón de Notificar por WhatsApp siempre está disponible para el profesor dueño y para el supervisor
       let actionsButtons = `
         <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="inline-block bg-green-500 hover:bg-green-600 text-white px-2 py-0.5 rounded text-[11px] font-medium" title="Notificar por WhatsApp">Notificar</a>
       `;
 
-      // Los botones de Renovar, Editar y Eliminar solo aparecen para el profesor dueño
-      if (canModifyStudent(s)) {
+      // Botón Renovar visible para profesores dueños y también para Raquel
+      if (canRenewStudent(s)) {
         actionsButtons += `
           <button type="button" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-0.5 rounded text-[11px] font-medium renew-btn" data-id="${s.id}" data-date="${s.dueDate || ''}" title="Renovar 1 mes">Renovar</button>
+        `;
+      }
+
+      // Botones Editar y Eliminar solo para el profesor dueño estricto
+      if (canModifyStudent(s)) {
+        actionsButtons += `
           <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[11px] font-medium edit-btn" data-id="${s.id}" title="Editar alumno">Editar</button>
           <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded text-[11px] font-medium delete-btn" data-id="${s.id}" title="Eliminar alumno">Eliminar</button>
         `;
@@ -761,7 +767,7 @@ function renderScheduleGrid(visibleStudents) {
 }
 
 // ==========================================
-// RESUMEN POR PROFESOR (Filtrado por privacidad)
+// RESUMEN POR PROFESOR
 // ==========================================
 function renderSummaryByProfessor(visibleStudents) {
   const hoy = getLocalTodayStr();
@@ -846,7 +852,7 @@ function renderSummaryByProfessor(visibleStudents) {
 }
 
 // ==========================================
-// BANNER DE CUMPLEAÑOS (Solo de alumnos visibles)
+// BANNER DE CUMPLEAÑOS
 // ==========================================
 function checkBirthdays(visibleStudents) {
   const today = new Date();
@@ -934,4 +940,3 @@ document.getElementById('search').addEventListener('input', () => {
 </script>
 </body>
 </html>
-
